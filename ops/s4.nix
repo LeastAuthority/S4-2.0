@@ -60,8 +60,8 @@
         # be improved.
         ExecStartPre            = "${pkgs.altcoins.zcash}/bin/zcash-fetch-params";
 
-        # Rely on $HOME to set the location of most things.  The configuration
-        # file is an exception as it lives in the store.
+        # Rely on $HOME to set the location of most Zcashd inputs.  The
+        # configuration file is an exception as it lives in the store.
         ExecStart               = "${pkgs.altcoins.zcash}/bin/zcashd -conf=${conf}";
       };
     };
