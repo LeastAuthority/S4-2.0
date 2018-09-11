@@ -2,6 +2,7 @@
   network.description = "Zcash server";
   zcashnode =
   { config, pkgs, ... }:
+  # Allow the two Zcash protocol ports.
   { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
 
     users.users.zcash =
