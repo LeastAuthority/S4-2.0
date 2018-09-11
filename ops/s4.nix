@@ -1,5 +1,5 @@
 {
-  network.description = "Web server";
+  network.description = "Zcash server";
   zcashnode =
   { config, pkgs, ... }:
   { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
