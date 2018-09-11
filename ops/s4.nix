@@ -1,3 +1,4 @@
+# Describe the software to run on the infrastructure described by s4-ec2.nix.
 {
   network.description = "Zcash server";
   zcashnode =
