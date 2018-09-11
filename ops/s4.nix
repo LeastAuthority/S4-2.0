@@ -36,6 +36,7 @@
     in
     { unitConfig.Documentation = "https://z.cash/";
       description = "Zcashd running a non-mining Zcash full node";
+      # Get it to start as a part of the normal boot process.
       wantedBy    = [ "multi-user.target" ];
 
       # Get zcash-fetch-params dependencies into its PATH.
