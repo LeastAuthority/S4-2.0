@@ -46,6 +46,12 @@ replace-with = "vendored-sources"
 EOF
 '';
 
+  checkPhase = ''
+    runHook preCheck
+    echo "Running cargo test --release"
+    cargo test --release
+    runHook postCheck
+  '';
   /*
    * Install the static library that results from the build.  buildRustPackage
    * doesn't know how to deal with library artifacts so we're left to do this
