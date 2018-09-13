@@ -39,6 +39,6 @@ rec { version = "2.0.0";
         mapIf
           (x: builtins.match "librustzcash-unstable-2017-03-17" x.name != null)
           updatelibrustzcash
-          altcoins.zcash.buildInputs;
+          old.buildInputs;
     }
 )
