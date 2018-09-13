@@ -18,6 +18,10 @@ let librustzcash = callPackage ./librustzcash.nix { };
      */
     mapIf = cond: f: xs: map (x: if (cond x) then (f x) else x) xs;
 in
+/*
+ * Use as much of the upstream Nix Zcash package as we can, overriding just
+ * what's necessary to get us to 2.0.0.
+ */
 pkgs.altcoins.zcash.overrideAttrs (old:
 rec { version = "2.0.0";
       name = "zcashd-" + version;
