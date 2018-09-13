@@ -1,7 +1,7 @@
 /*
  * Zcash 2.0.0 aka Zcash Sapling
  */
-{ pkgs, fetchFromGitHub, rustPlatform, callPackage }:
+{ stdenv, pkgs, fetchFromGitHub, rustPlatform, gmp, libsodium, boost, callPackage }:
 /*
  * Get a sufficiently up-to-date version of librustzcash
  */
@@ -17,28 +17,44 @@ let librustzcash = callPackage ./librustzcash.nix { };
      * xs: The list
      */
     mapIf = cond: f: xs: map (x: if (cond x) then (f x) else x) xs;
+    zcash = pkgs.altcoins.zcash;
+    overrides =
+    /* Zcash wants to statically link to everything.
+     */
+    { libsodium = libsodium.overrideAttrs (old: { configureFlags = "--enable-static"; });
+       gmp = gmp.override { withStatic = true; };
+       boost = boost.override
+       { enableStatic = true;
+         enableSingleThreaded = true;
+         enableMultiThreaded = false;
+       };
+    };
 in
 /*
  * Use as much of the upstream Nix Zcash package as we can, overriding just
  * what's necessary to get us to 2.0.0.
  */
-pkgs.altcoins.zcash.overrideAttrs (old:
-rec { version = "2.0.0";
-      name = "zcashd-" + version;
-      src = fetchFromGitHub
-      { owner = "zcash";
-        repo = "zcash";
-        rev = "v2.0.0";
-        sha256 = "0n18amzk96dncrvar5w8wxz75is2gjmrm643k37rxd8z2k1m9rbj";
-      };
-      buildInputs =
-        /*
-         * In the old build inputs, replace the old librustzcash with our new
-         * one.
-         */
-        mapIf
-          (x: builtins.match "librustzcash-unstable-2017-03-17" x.name != null)
-          updatelibrustzcash
-          old.buildInputs;
-    }
-)
+  (zcash.override overrides).overrideAttrs (old:
+  rec { version = "2.0.0";
+        name = "zcashd-" + version;
+        src = fetchFromGitHub
+        { owner = "zcash";
+          repo = "zcash";
+          rev = "v2.0.0";
+          sha256 = "0n18amzk96dncrvar5w8wxz75is2gjmrm643k37rxd8z2k1m9rbj";
+        };
+        patchPhase = old.patchPhase + ''
+          sed -i"" 's,-lboost_program_options-mt,-lboost_program_options,' configure.ac
+        '';
+
+        buildInputs =
+          /*
+           * In the old build inputs, replace the old librustzcash with our new
+           * one.
+           */
+          mapIf
+            (x: builtins.match "librustzcash-unstable-2017-03-17" x.name != null)
+            updatelibrustzcash
+            old.buildInputs;
+      }
+ )
