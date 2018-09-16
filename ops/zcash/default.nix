@@ -44,13 +44,19 @@ in
           sha256 = "0n18amzk96dncrvar5w8wxz75is2gjmrm643k37rxd8z2k1m9rbj";
         };
         patchPhase = old.patchPhase + ''
+          # Cargo-culted based on upstream patchPhase.  Have not verified it
+          # is really necessary.  Getting static boost may have been
+          # sufficient to fix the issues that seemed related to this.
           sed -i"" 's,-lboost_program_options-mt,-lboost_program_options,' configure.ac
         '';
 
         buildInputs =
           /*
-           * In the old build inputs, replace the old librustzcash with our new
-           * one.
+           * In the old build inputs, replace the old librustzcash with our
+           * new one.  The usual (simpler) idiom for this replacement,
+           * `zcash.override { ... }` does not work because the Zcash function
+           * doesn't take librustzcash as an argument.  It loads it directly
+           * using `callPackage`.
            */
           mapIf
             (x: builtins.match "librustzcash-unstable-2017-03-17" x.name != null)
