@@ -48,6 +48,10 @@ in
           # is really necessary.  Getting static boost may have been
           # sufficient to fix the issues that seemed related to this.
           sed -i"" 's,-lboost_program_options-mt,-lboost_program_options,' configure.ac
+
+          # The libsnark gtest build fails with link errors I don't really
+          # understand.  Skip the whole libsnark gtest build, instead.
+          sed -i"" 's,$(CXX) -o $@   $(GTEST_OBJS) $(LIBSNARK_A) $(CXXFLAGS) $(LDFLAGS) $(GTEST_LDLIBS) $(LDLIBS),,' src/snark/Makefile
         '';
 
         buildInputs =
