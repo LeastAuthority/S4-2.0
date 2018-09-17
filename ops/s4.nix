@@ -67,5 +67,11 @@
         ExecStart               = "${zcash}/bin/zcashd -conf=${conf}";
       };
     };
+
+    services.tor.enable = true;
+    /*
+     * We don't make outgoing Tor connections via the SOCKS proxy.
+     */
+    services.tor.client.socksPolicy = "reject *";
   };
 }
