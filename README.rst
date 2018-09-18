@@ -6,6 +6,14 @@ This is the DevOps stuff to deploy and operate S4 2.0.
 Quick Start
 ~~~~~~~~~~~
 
+VirtualBox Deployment
+---------------------
+
+With a working directory of the root of a checkout of S4-2.0::
+
+   nixops create --deployment your-s4-petname ops/s4.nix ops/s4-vbox.nix
+   nixops deploy --deployment your-s4-petname
+
 AWS Deployment
 --------------
 
@@ -18,7 +26,7 @@ with the root of your S4-2.0 checkout as your working directory::
 
 Then, with the same working directory::
 
-   nixops create --deployment your-s4-petname ops/*.nix
+   nixops create --deployment your-s4-petname ops/s4.nix ops/s4-ec2.nix
    nixops deploy --deployment your-s4-petname
 
 Tools
