@@ -12,7 +12,7 @@ let
     deployment.ec2.region = region;
     # We need at least 2GB for the Zcash bootstrap process alone.
     deployment.ec2.ebsInitialRootDiskSize = 10;
-    deployment.ec2.instanceType = "t3.small";
+    deployment.ec2.instanceType = "t3.medium";
     deployment.ec2.keyPair = resources.ec2KeyPairs.my-key-pair;
     deployment.ec2.securityGroups = [ "allow_all" ];
   };
