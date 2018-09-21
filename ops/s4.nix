@@ -3,6 +3,8 @@
   network.description = "Zcash server";
   zcashnode =
   { config, pkgs, ... }:
+  let zcash = pkgs.callPackage ./zcash/default.nix { };
+  in
   # Allow the two Zcash protocol ports.
   { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
 
@@ -13,8 +15,7 @@
     };
 
     environment.systemPackages = [
-      # Nix-packaged Zcash distribution - 1.x.
-      pkgs.altcoins.zcash
+      zcash
       # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
       # package bug that we have to specify it.
       pkgs.utillinux
@@ -51,7 +52,7 @@
         PrivateTmp              = "yes";
         # PrivateNetwork          = "yes";
         # NoNewPrivileges         = "yes";
-        # ReadWriteDirectories    = "${pkgs.altcoins.zcash}/bin /var/lib/zcashd";
+        # ReadWriteDirectories    = "${zcash}/bin /var/lib/zcashd";
         # InaccessibleDirectories = "/home";
         StateDirectory          = "zcashd";
 
@@ -59,11 +60,11 @@
         # from the network.  This only needs to happen once.  Currently we try
         # to do it every time we're about to start the node.  Maybe this can
         # be improved.
-        ExecStartPre            = "${pkgs.altcoins.zcash}/bin/zcash-fetch-params";
+        ExecStartPre            = "${zcash}/bin/zcash-fetch-params";
 
         # Rely on $HOME to set the location of most Zcashd inputs.  The
         # configuration file is an exception as it lives in the store.
-        ExecStart               = "${pkgs.altcoins.zcash}/bin/zcashd -conf=${conf}";
+        ExecStart               = "${zcash}/bin/zcashd -conf=${conf}";
       };
     };
   };
