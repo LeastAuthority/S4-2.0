@@ -3,6 +3,24 @@ S4 2.0
 
 This is the DevOps stuff to deploy and operate S4 2.0.
 
+Quick Start
+~~~~~~~~~~~
+
+AWS Deployment
+--------------
+
+Set ``AWS_PROFILE`` in your environment.
+If the AWS account selected has never previously been initialized for S4 2.0 then,
+with the root of your S4-2.0 checkout as your working directory::
+
+   terraform init ops
+   terraform apply ops
+
+Then, with the same working directory::
+
+   nixops create --deployment your-s4-petname ops/*.nix
+   nixops deploy --deployment your-s4-petname
+
 Tools
 ~~~~~
 
