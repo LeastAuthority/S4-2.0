@@ -145,6 +145,11 @@
       permissions = "0600";
     };
 
+    /*
+     * Also provide a v2 key for a v2 version of the service.  v3 is
+     * supposedly better so we may never use this and it might just be deleted
+     * later.
+     */
     deployment.keys."signup-website-tor-onion-service-v2.private_key" =
     { keyFile = ./secrets/onion-services/v2/signup-website.private_key;
       user = "tor";
@@ -158,6 +163,11 @@
       permissions = "0600";
     };
 
+    # Construct a directory with a suitable structure for consumption by Tor
+    # as an Onion service configuration directory.  We can only use Nix's
+    # deployment.keys feature to create create a flat hierarchy in /run/keys
+    # so we need systemd's help to create the structure required by Tor.
+    #
     # https://nixos.org/nixos/manual/options.html#opt-systemd.tmpfiles.rules
     systemd.tmpfiles.rules =
     [ "d  ${websiteOnion3Dir}                       0700 tor tor - -"
