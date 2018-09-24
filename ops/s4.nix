@@ -196,8 +196,10 @@
       wantedBy    = [ "multi-user.target" ];
 
       # Make sure Tor is up and our keys are available.
+      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
+      requires = [ "tor.service" "signup-website-tor-onion-service.secret-key.service" ];
+      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
       after = [ "tor.service" "signup-website-tor-onion-service.secret-key.service" ];
-      wants = [ "tor.service" "signup-website-tor-onion-service.secret-key.service" ];
 
       script = ''
       twist --log-format=text web \
