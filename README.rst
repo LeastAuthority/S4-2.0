@@ -62,3 +62,27 @@ Zcash
 A non-mining Zcash full node is included as part of this deployment.
 This allows for processing of Zcash shielded transactions.
 The Zcash deployment is primarily configured using ``zcashnode`` in ``s4.nix``.
+
+Tor
+---
+
+A Tor daemon is included as part of this deployment.
+This allows the service website and Tahoe-LAFS daemons to operate as Onion services.
+This, in turn, provides location privacy for users browsing the website and operating Tahoe-LAFS clients.
+The Tor node is primary configured using ``zcashnode`` in ``s4.nix``
+(but maybe this should change).
+
+Tor Service Keys
+````````````````
+
+To publish the website at a stable Onion service address,
+the deployment requires use of persistent private keys.
+No such keys have yet been provisioned.
+Meanwhile, you can generate some throw-away keys::
+
+  pip install stem
+  mkdir -p ops/secrets/onion-services/v3
+  cd ops/secrets/onion-services/v3
+  bin/generate-onion-keys
+
+You must have keys before you can use ``nixops`` to deploy the service.

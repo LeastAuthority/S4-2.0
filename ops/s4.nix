@@ -7,7 +7,6 @@
   let zcash = pkgs.callPackage ./zcash/default.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
-      websiteOnion2Dir = "/run/onion/v2/signup-website";
       websiteOnion3Dir = "/run/onion/v3/signup-website";
   in
   # Allow the two Zcash protocol ports.
@@ -118,7 +117,10 @@
     systemd.services.tor =
     { serviceConfig =
       { ReadWritePaths =
-        [ "/var/lib/tor"
+        [ # Let it keep track of its various internal state.
+          "/var/lib/tor"
+          # Let it generate the public key file for the onion service key.
+          "/run/onion"
         ];
       };
     };
@@ -132,32 +134,8 @@
       group = "tor";
       permissions = "0600";
     };
-    deployment.keys."signup-website-tor-onion-service-v3.public" =
-    { keyFile = ./secrets/onion-services/v3/signup-website.public;
-      user = "tor";
-      group = "tor";
-      permissions = "0600";
-    };
     deployment.keys."signup-website-tor-onion-service-v3.hostname" =
-    { keyFile = ./secrets/onion-services/v3/hostname;
-      user = "tor";
-      group = "tor";
-      permissions = "0600";
-    };
-
-    /*
-     * Also provide a v2 key for a v2 version of the service.  v3 is
-     * supposedly better so we may never use this and it might just be deleted
-     * later.
-     */
-    deployment.keys."signup-website-tor-onion-service-v2.private_key" =
-    { keyFile = ./secrets/onion-services/v2/signup-website.private_key;
-      user = "tor";
-      group = "tor";
-      permissions = "0600";
-    };
-    deployment.keys."signup-website-tor-onion-service-v2.hostname" =
-    { keyFile = ./secrets/onion-services/v2/hostname;
+    { keyFile = ./secrets/onion-services/v3/signup-website.hostname;
       user = "tor";
       group = "tor";
       permissions = "0600";
@@ -170,16 +148,12 @@
     #
     # https://nixos.org/nixos/manual/options.html#opt-systemd.tmpfiles.rules
     systemd.tmpfiles.rules =
-    [ "d  ${websiteOnion3Dir}                       0700 tor tor - -"
-      "L+ ${websiteOnion3Dir}/hs_ed25519_secret_key -    -   -   - /run/keys/signup-website-tor-onion-service-v3.secret"
-      "L+ ${websiteOnion3Dir}/hs_ed25519_public_key -    -   -   - /run/keys/signup-website-tor-onion-service-v3.public"
-      "L+ ${websiteOnion3Dir}/hostname              -    -   -   - /run/keys/signup-website-tor-onion-service-v3.hostname"
+    [ "d  /run/onion                                0700 tor tor - -"
+      "d  /run/onion/v3                             0700 tor tor - -"
+      "d  ${websiteOnion3Dir}                       0700 tor tor - -"
 
-      "d  /run/onion                                0700 tor tor - -"
-      "d  /run/onion/v2                             0700 tor tor - -"
-      "d  ${websiteOnion2Dir}                       0700 tor tor - -"
-      "L+ ${websiteOnion2Dir}/private_key           -    -   -   - /run/keys/signup-website-tor-onion-service-v2.private_key"
-      "L+ ${websiteOnion2Dir}/hostname              -    -   -   - /run/keys/signup-website-tor-onion-service-v2.hostname"
+      "L+ ${websiteOnion3Dir}/hs_ed25519_secret_key -    -   -   - /run/keys/signup-website-tor-onion-service-v3.secret"
+      "L+ ${websiteOnion3Dir}/hostname              -    -   -   - /run/keys/signup-website-tor-onion-service-v3.hostname"
     ];
 
     /*
@@ -197,15 +171,15 @@
 
       # Make sure Tor is up and our keys are available.
       # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
-      requires = [ "tor.service" "signup-website-tor-onion-service.secret-key.service" ];
+      requires = [ "tor.service" "signup-website-tor-onion-service-v3.secret-key.service" ];
       # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
-      after = [ "tor.service" "signup-website-tor-onion-service.secret-key.service" ];
+      after = [ "tor.service" "signup-website-tor-onion-service-v3.secret-key.service" ];
 
       script = ''
       twist --log-format=text web \
         --path ${s4signupwebsite} \
         --port onion:version=3:public_port=80:controlPort=${toString torControlPort}:hiddenServiceDir=${websiteOnion3Dir}
       '';
-  };
+    };
   };
 }
