@@ -143,8 +143,8 @@
 
     # Construct a directory with a suitable structure for consumption by Tor
     # as an Onion service configuration directory.  We can only use Nix's
-    # deployment.keys feature to create create a flat hierarchy in /run/keys
-    # so we need systemd's help to create the structure required by Tor.
+    # deployment.keys feature to create a flat hierarchy in /run/keys so we
+    # need systemd's help to create the structure required by Tor.
     #
     # https://nixos.org/nixos/manual/options.html#opt-systemd.tmpfiles.rules
     systemd.tmpfiles.rules =
