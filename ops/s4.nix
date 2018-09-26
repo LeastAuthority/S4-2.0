@@ -14,6 +14,7 @@
   let zcash = pkgs.callPackage ./zcash/default.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
+      mainWebsiteProxyPort = 9061;
   in
   # Allow the two Zcash protocol ports.
   { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
@@ -168,6 +169,14 @@
       group = "tor";
       permissions = "0600";
     };
+    # And the key for the Onion-ified main website.
+    deployment.keys."main-website-tor-onion-service-v3.secret" =
+    { keyFile = ./secrets/onion-services/v3/main-website.secret;
+      user = "tor";
+      group = "tor";
+      permissions = "0600";
+    };
+
     /*
      * Operate a static website allowing user signup, exposed via the Tor
      * hidden service.
@@ -199,5 +208,56 @@
         --port onion:public_port=80:controlPort=${toString torControlPort}:privateKeyFile=/run/keys/signup-website-tor-onion-service-v3.secret:singleHop=true
       '';
     };
+
+    # Create a local-only nginx proxy server that will accept cleartext
+    # requests and proxy them to the HTTPS main website server.
+    services.nginx.enable = true;
+    services.nginx.appendConfig = ''
+      error_log logs/error.log debug;
+    '';
+
+    services.nginx.virtualHosts =
+    { ${ builtins.readFile ./secrets/onion-services/v3/main-website.hostname } =
+      { locations."/" =
+        { proxyPass = "https://leastauthority.com";
+          extraConfig = ''
+            # The proxy upstream target only works with SNI.  Make sure that is on.
+            proxy_ssl_server_name on;
+            # Regardless of the request host, this is what makes sense for upstream.
+            proxy_set_header Host leastauthority.com;
+            # Verify the upstream target certificate!  This is not the default.
+            proxy_ssl_verify on;
+          '';
+        };
+        listen = [ { addr = "127.0.0.1"; port = mainWebsiteProxyPort; } ];
+        serverName = "leastauthority.com";
+      };
+    };
+
+    # Create an Onion service that proxies cleartext connections to the local
+    # cleartext nginx proxy server.
+    systemd.services."main-website" =
+    { unitConfig.Documentation = "https://leastauthority.com/";
+      description = "The overall Least Authority website with all content.";
+
+      path = [ (pkgs.python27.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
+
+      # Get it to start as a part of the normal boot process.
+      wantedBy    = [ "multi-user.target" ];
+
+      # Make sure Tor is up and our keys are available.
+      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
+      requires = [ "tor.service" "main-website-tor-onion-service-v3.secret-key.service" ];
+      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
+      after = [ "tor.service" "main-website-tor-onion-service-v3.secret-key.service" ];
+
+      script = ''
+      twist --log-format=text portforward \
+        --port x-onion:public_port=80:controlPort=${toString torControlPort}:privateKeyPath=/run/keys/main-website-tor-onion-service-v3.secret \
+        --dest_port ${toString mainWebsiteProxyPort}
+      '';
+    };
+
   };
+
 }
