@@ -94,10 +94,6 @@
      * Run a Tor node so we can operate a hidden service to allow user signup.
      */
     services.tor.enable = true;
-    /*
-     * We don't make outgoing Tor connections via the SOCKS proxy.
-     */
-    services.tor.client.socksPolicy = "reject *";
 
     /*
      * Enable the control port so that we can do interesting things with the
@@ -108,6 +104,35 @@
     services.tor.extraConfig = ''
       # Enable authentication on the ControlPort via a secret shared cookie.
       CookieAuthentication 1
+
+      # Quoting https://gitweb.torproject.org/torspec.git/tree/control-spec.txt
+      #
+      # Tor instances can either be in anonymous hidden service mode, or
+      # non-anonymous single onion service mode. All hidden services on the
+      # same tor instance have the same anonymity. To guard against unexpected
+      # loss of anonymity, Tor checks that the ADD_ONION "NonAnonymous" flag
+      # matches the current hidden service anonymity mode. The hidden service
+      # anonymity mode is configured using the Tor options
+      # HiddenServiceSingleHopMode and HiddenServiceNonAnonymousMode. If both
+      # these options are 1, the "NonAnonymous" flag must be provided to
+      # ADD_ONION. If both these options are 0 (the Tor default), the flag
+      # must NOT be provided.
+      #
+      # Our purpose in using Tor is not to protect our location privacy
+      # ("anonymity") but to ensure that clients have their location privacy
+      # protected.  Therefore, we can drop the Tor behaviors which are for
+      # protecting our location privacy.  This should offer some amount of
+      # performance improvement as well due to the reduced number of hops to
+      # reach the service.
+      HiddenServiceSingleHopMode 1
+      HiddenServiceNonAnonymousMode 1
+
+      # We don't make outgoing Tor connections via the SOCKS proxy.  Disable
+      # it.  This is also necessary to use HiddenServiceNonAnonymousMode.
+      #
+      # NixOS Tor support defaults to disabling "client" features but there
+      # seems to be a bug where it leaves the Socks server enabled anyway.
+      SocksPort 0
     '';
 
     /*
