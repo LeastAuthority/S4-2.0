@@ -13,13 +13,19 @@ Creating a deployment running entirely within local VirtualBox VMs is an easy wa
 At least, it is in principle.
 In practice, the interaction between NixOps and VirtualBox seems fragile.
 There is a good chance this won't actually work for you.
-It doesn't work for me.
 Bearing that in mind ...
 
 With a working directory of the root of a checkout of S4-2.0::
 
    nixops create --deployment your-s4-petname ops/s4.nix ops/s4-vbox.nix
+   nixops set-args --arg bridgeAdapter '"<host network interface>"'
    nixops deploy --deployment your-s4-petname
+
+For ``<host network interface>``,
+select a network interface on the host which can route traffic out of your network
+and which has a DHCP server.
+This might be something like ``wlp4s0`` or ``enp0s31f6``.
+Make sure to include all of the quotes as indicated above.
 
 AWS Deployment
 --------------
