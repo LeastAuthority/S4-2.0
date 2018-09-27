@@ -2,6 +2,13 @@
 {
   network.description = "Zcash server";
 
+  defaults = { ... }:
+  {
+    # Arrange for some packages to be overridden with different versions on
+    # all machines.
+    nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
+  };
+
   zcashnode =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
