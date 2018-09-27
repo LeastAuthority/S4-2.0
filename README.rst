@@ -83,5 +83,6 @@ Meanwhile, you can generate some throw-away keys::
   pip install stem
   mkdir -p ops/secrets/onion-services/v3
   ./bin/generate-onion-keys ops/secrets/onion-services/v3/signup-website
+  ./bin/generate-onion-keys ops/secrets/onion-services/v3/main-website
 
 You must have keys before you can use ``nixops`` to deploy the service.
