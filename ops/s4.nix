@@ -63,6 +63,10 @@
       # Get it to start as a part of the normal boot process.
       wantedBy    = [ "multi-user.target" ];
 
+      # Make sure we have network connectivity before bothering to try to
+      # start zcashd.
+      requires = [ "network-online.target" ];
+
       # Get zcash-fetch-params dependencies into its PATH.
       path = [ pkgs.utillinux pkgs.wget ];
 
