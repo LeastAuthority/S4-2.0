@@ -15,7 +15,6 @@
       txxonion = pkgs.callPackage ./txxonion.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
-      websiteOnion3Dir = "/run/onion/v3/signup-website";
   in
   # Allow the two Zcash protocol ports.
   { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
