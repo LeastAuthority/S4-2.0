@@ -19,7 +19,7 @@ With a working directory of the root of a checkout of S4-2.0::
 
    nixops create --deployment your-s4-petname ops/s4.nix ops/s4-vbox.nix
    nixops set-args --arg bridgeAdapter '"<host network interface>"'
-   nixops deploy --deployment your-s4-petname
+   nixops deploy --force-reboot --deployment your-s4-petname
 
 For ``<host network interface>``,
 select a network interface on the host which can route traffic out of your network
