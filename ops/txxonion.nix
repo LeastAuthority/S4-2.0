@@ -1,3 +1,6 @@
+# Package txxonion for ourselves to use.  This provides an endpoint that lets
+# us provide Onion service keys more easily than the onion endpoint in
+# txtorcon.
 { python }:
 python.pkgs.buildPythonPackage
 rec { pname = "txxonion";
