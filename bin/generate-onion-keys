@@ -12,10 +12,6 @@ def main(base_path="signup-website"):
         key_type="NEW",
         key_content="ED25519-V3",
     )
-    with open(base_path + ".hostname", "w") as hostname:
-        hostname.write(
-            response.service_id + ".onion\n"
-        )
     with open(base_path + ".secret", "w") as secret:
         secret.write(
             "== ed25519v1-secret: type0 ==\x00\x00\x00" +

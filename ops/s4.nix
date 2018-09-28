@@ -159,8 +159,6 @@
       { ReadWritePaths =
         [ # Let it keep track of its various internal state.
           "/var/lib/tor"
-          # Let it generate the public key file for the onion service key.
-          "/run/onion"
         ];
       };
     };
@@ -174,28 +172,6 @@
       group = "tor";
       permissions = "0600";
     };
-    deployment.keys."signup-website-tor-onion-service-v3.hostname" =
-    { keyFile = ./secrets/onion-services/v3/signup-website.hostname;
-      user = "tor";
-      group = "tor";
-      permissions = "0600";
-    };
-
-    # Construct a directory with a suitable structure for consumption by Tor
-    # as an Onion service configuration directory.  We can only use Nix's
-    # deployment.keys feature to create a flat hierarchy in /run/keys so we
-    # need systemd's help to create the structure required by Tor.
-    #
-    # https://nixos.org/nixos/manual/options.html#opt-systemd.tmpfiles.rules
-    systemd.tmpfiles.rules =
-    [ "d  /run/onion                                0700 tor tor - -"
-      "d  /run/onion/v3                             0700 tor tor - -"
-      "d  ${websiteOnion3Dir}                       0700 tor tor - -"
-
-      "L+ ${websiteOnion3Dir}/hs_ed25519_secret_key -    -   -   - /run/keys/signup-website-tor-onion-service-v3.secret"
-      "L+ ${websiteOnion3Dir}/hostname              -    -   -   - /run/keys/signup-website-tor-onion-service-v3.hostname"
-    ];
-
     /*
      * Operate a static website allowing user signup, exposed via the Tor
      * hidden service.
