@@ -46,12 +46,44 @@ Terraform is used to manage certain resources.
 The Terraform configuration lives in ``.tf`` files.
 It is typically applied using ``terraform apply``.
 
-NixOps
-------
+Nix Tools
+---------
 
-As much of the deployment as possible is defined using NixOps.
-The NixOps configuration lives in ``.nix`` files.
+Nix is a collection of tools for managing a purely functional Linux distribution.
+
+As much of the deployment as possible is managed using the Nix tools.
+The configuration lives in ``.nix`` files in this repository.
 It is typically applied using ``nixops deploy --deployment s4``.
+
+NixOS
+`````
+
+`NixOS`_ is a purely functional Linux distribution.
+Compared to other Linux distributions,
+NixOS has the advantages of declarative system configuration,
+atomic upgrades and rollbacks,
+and a tailor-made operational management tool (`NixOps`_).
+
+Nix
+```
+
+`Nix`_ is a purely functional package manager.
+It is used to configure a NixOS installation.
+It is also a purely functional programming language in which this configuration is written.
+
+NixOps
+``````
+
+`NixOps`_ is a tool for deploying sets of `NixOS`_ Linux machines.
+It uses and extends the purely functional `Nix`_ package manager to allow node provisioning and network configuration.
+
+Nixpkgs
+```````
+
+`Nixpkgs`_ is a collection of packages available for NixOS.
+Many of these are used in the deployment.
+NixOS is not limited to the packages in this collection.
+Where we have needs that go beyond Nixpkgs we can use Nix to create our own packages.
 
 Components
 ~~~~~~~~~~
@@ -85,3 +117,8 @@ Meanwhile, you can generate some throw-away keys::
   ./bin/generate-onion-keys ops/secrets/onion-services/v3/signup-website
 
 You must have keys before you can use ``nixops`` to deploy the service.
+
+.. _NixOps: https://nixos.org/nixops/
+.. _NixOS: https://nixos.org/
+.. _Nix: https://nixos.org/nix/
+.. _Nixpkgs: https://nixos.org/nixpkgs/
