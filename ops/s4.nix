@@ -136,6 +136,9 @@
       # protecting our location privacy.  This should offer some amount of
       # performance improvement as well due to the reduced number of hops to
       # reach the service.
+      #
+      # However, https://github.com/meejah/txtorcon/issues/315
+      #
       # HiddenServiceSingleHopMode 1
       # HiddenServiceNonAnonymousMode 1
 
