@@ -12,6 +12,7 @@
   zcashnode =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
+      txxonion = pkgs.callPackage ./txxonion.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
       websiteOnion3Dir = "/run/onion/v3/signup-website";
@@ -200,7 +201,7 @@
     { unitConfig.Documentation = "https://leastauthority.com/";
       description = "The S4 2.0 signup website.";
 
-      path = [ (pkgs.python27.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
+      path = [ (pkgs.python27.withPackages (ps: [ ps.twisted ps.txtorcon txxonion ])) ];
 
       # Get it to start as a part of the normal boot process.
       wantedBy    = [ "multi-user.target" ];
