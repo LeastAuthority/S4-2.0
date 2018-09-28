@@ -136,8 +136,8 @@
       # protecting our location privacy.  This should offer some amount of
       # performance improvement as well due to the reduced number of hops to
       # reach the service.
-      HiddenServiceSingleHopMode 1
-      HiddenServiceNonAnonymousMode 1
+      # HiddenServiceSingleHopMode 1
+      # HiddenServiceNonAnonymousMode 1
 
       # We don't make outgoing Tor connections via the SOCKS proxy.  Disable
       # it.  This is also necessary to use HiddenServiceNonAnonymousMode.
@@ -215,7 +215,7 @@
       script = ''
       twist --log-format=text web \
         --path ${s4signupwebsite} \
-        --port onion:version=3:public_port=80:controlPort=${toString torControlPort}:hiddenServiceDir=${websiteOnion3Dir}
+        --port x-onion:public_port=80:controlPort=${toString torControlPort}:privateKeyPath=/run/keys/signup-website-tor-onion-service-v3.secret
       '';
     };
   };
