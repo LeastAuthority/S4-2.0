@@ -191,6 +191,12 @@
       # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
       after = [ "tor.service" "signup-website-tor-onion-service-v3.secret-key.service" ];
 
+      # Run an Onion-to-HTTPS port forward to expose the website at an Onion
+      # service address.  Use the x-onion endpoint here so that we can refer
+      # directly to the key file.  This is nicer than using the "hidden
+      # service directory" feature which requires a more complex directory
+      # structure, requires us to supply more files, and has weird
+      # file-rewriting behavior we don't want.
       script = ''
       twist --log-format=text web \
         --path ${s4signupwebsite} \
