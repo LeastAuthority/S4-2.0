@@ -3,6 +3,7 @@
 from sys import argv
 
 from stem.control import Controller
+from binascii import a2b_base64
 
 def main(base_path="signup-website"):
     c = Controller.from_port()
@@ -12,10 +13,10 @@ def main(base_path="signup-website"):
         key_type="NEW",
         key_content="ED25519-V3",
     )
-    with open(base_path + ".secret", "w") as secret:
+    with open(base_path + ".secret", "wb") as secret:
         secret.write(
-            "== ed25519v1-secret: type0 ==\x00\x00\x00" +
-            response.private_key.decode("base64")
+            b"== ed25519v1-secret: type0 ==\x00\x00\x00" +
+            a2b_base64(response.private_key)
         )
 
 main(*argv[1:])
