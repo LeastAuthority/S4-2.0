@@ -1,5 +1,5 @@
 self: super:
-{
+rec {
   # Supply a newer version of Tor than is currently available in nixpkgs.
   # This is necessary to make restarting ephemeral Onion services reliable.
   # Old versions of Tor sometimes fail to re-upload the descriptor or even if
@@ -13,4 +13,17 @@ self: super:
           };
         }
   );
+
+  python3 = super.python3.override
+  { packageOverrides = py-self: py-super:
+    { txtorcon = py-super.txtorcon.overrideAttrs(old:
+      { src = self.pkgs.fetchgit
+        { url = "https://github.com/meejah/txtorcon";
+          sha256 = "19sfg3wvbnlmkh5mj4dv0scwmb81xb1rrcs3rfmjqw9dmq5bp4jd";
+          rev = "2a9b7d1e672428ab11e81c0bb3142c936ad797ef";
+        };
+      });
+    };
+  };
+  python3Packages = python3.pkgs;
 }
