@@ -2,12 +2,19 @@
 {
   network.description = "Zcash server";
 
+  defaults = { ... }:
+  {
+    # Arrange for some packages to be overridden with different versions on
+    # all machines.
+    nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
+  };
+
   zcashnode =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
+      txxonion = pkgs.callPackage ./txxonion.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
-      websiteOnion3Dir = "/run/onion/v3/signup-website";
   in
   # Allow the two Zcash protocol ports.
   { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
@@ -128,8 +135,11 @@
       # protecting our location privacy.  This should offer some amount of
       # performance improvement as well due to the reduced number of hops to
       # reach the service.
-      HiddenServiceSingleHopMode 1
-      HiddenServiceNonAnonymousMode 1
+      #
+      # However, https://github.com/meejah/txtorcon/issues/315
+      #
+      # HiddenServiceSingleHopMode 1
+      # HiddenServiceNonAnonymousMode 1
 
       # We don't make outgoing Tor connections via the SOCKS proxy.  Disable
       # it.  This is also necessary to use HiddenServiceNonAnonymousMode.
@@ -148,8 +158,6 @@
       { ReadWritePaths =
         [ # Let it keep track of its various internal state.
           "/var/lib/tor"
-          # Let it generate the public key file for the onion service key.
-          "/run/onion"
         ];
       };
     };
@@ -163,28 +171,6 @@
       group = "tor";
       permissions = "0600";
     };
-    deployment.keys."signup-website-tor-onion-service-v3.hostname" =
-    { keyFile = ./secrets/onion-services/v3/signup-website.hostname;
-      user = "tor";
-      group = "tor";
-      permissions = "0600";
-    };
-
-    # Construct a directory with a suitable structure for consumption by Tor
-    # as an Onion service configuration directory.  We can only use Nix's
-    # deployment.keys feature to create a flat hierarchy in /run/keys so we
-    # need systemd's help to create the structure required by Tor.
-    #
-    # https://nixos.org/nixos/manual/options.html#opt-systemd.tmpfiles.rules
-    systemd.tmpfiles.rules =
-    [ "d  /run/onion                                0700 tor tor - -"
-      "d  /run/onion/v3                             0700 tor tor - -"
-      "d  ${websiteOnion3Dir}                       0700 tor tor - -"
-
-      "L+ ${websiteOnion3Dir}/hs_ed25519_secret_key -    -   -   - /run/keys/signup-website-tor-onion-service-v3.secret"
-      "L+ ${websiteOnion3Dir}/hostname              -    -   -   - /run/keys/signup-website-tor-onion-service-v3.hostname"
-    ];
-
     /*
      * Operate a static website allowing user signup, exposed via the Tor
      * hidden service.
@@ -193,7 +179,7 @@
     { unitConfig.Documentation = "https://leastauthority.com/";
       description = "The S4 2.0 signup website.";
 
-      path = [ (pkgs.python27.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
+      path = [ (pkgs.python27.withPackages (ps: [ ps.twisted ps.txtorcon txxonion ])) ];
 
       # Get it to start as a part of the normal boot process.
       wantedBy    = [ "multi-user.target" ];
@@ -204,10 +190,16 @@
       # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
       after = [ "tor.service" "signup-website-tor-onion-service-v3.secret-key.service" ];
 
+      # Run an Onion-to-HTTPS port forward to expose the website at an Onion
+      # service address.  Use the x-onion endpoint here so that we can refer
+      # directly to the key file.  This is nicer than using the "hidden
+      # service directory" feature which requires a more complex directory
+      # structure, requires us to supply more files, and has weird
+      # file-rewriting behavior we don't want.
       script = ''
       twist --log-format=text web \
         --path ${s4signupwebsite} \
-        --port onion:version=3:public_port=80:controlPort=${toString torControlPort}:hiddenServiceDir=${websiteOnion3Dir}
+        --port x-onion:public_port=80:controlPort=${toString torControlPort}:privateKeyPath=/run/keys/signup-website-tor-onion-service-v3.secret
       '';
     };
   };
