@@ -19,8 +19,8 @@ rec {
     { txtorcon = py-super.txtorcon.overrideAttrs(old:
       { src = self.pkgs.fetchgit
         { url = "https://github.com/meejah/txtorcon";
-          sha256 = "19sfg3wvbnlmkh5mj4dv0scwmb81xb1rrcs3rfmjqw9dmq5bp4jd";
-          rev = "2a9b7d1e672428ab11e81c0bb3142c936ad797ef";
+          sha256 = "0qz7j1mp03mxm7pv218h4pydpa7yi6r8cbc9rfmqcpl0s7f8hrsz";
+          rev = "8dbd66ba896ca956a73b0bbc6d90ffafded60eaa";
         };
       });
     };
