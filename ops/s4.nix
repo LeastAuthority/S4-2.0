@@ -12,7 +12,6 @@
   zcashnode =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
-      txxonion = pkgs.callPackage ./txxonion.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
   in
