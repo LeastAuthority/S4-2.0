@@ -101,6 +101,17 @@ A non-mining Zcash full node is included as part of this deployment.
 This allows for processing of Zcash shielded transactions.
 The Zcash deployment is primarily configured using ``zcashnode`` in ``s4.nix``.
 
+Wallet
+``````
+
+z-addr keys are required to process incoming transactions representing subscription payments.
+The wallet contains only the viewing keys for these transactions.
+This limits the damage that can be done should the wallet be compromised
+(transactions can be read but funds cannot be spent).
+
+The master spending key(s) are maintained elsewhere.
+The wallet on the S4 2.0 deployment is given viewing keys for import.
+
 Tor
 ---
 
