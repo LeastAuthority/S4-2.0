@@ -12,7 +12,6 @@
   zcashnode =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
-      txxonion = pkgs.callPackage ./txxonion.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
   in
@@ -179,7 +178,7 @@
     { unitConfig.Documentation = "https://leastauthority.com/";
       description = "The S4 2.0 signup website.";
 
-      path = [ (pkgs.python27.withPackages (ps: [ ps.twisted ps.txtorcon txxonion ])) ];
+      path = [ (pkgs.python3.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
 
       # Get it to start as a part of the normal boot process.
       wantedBy    = [ "multi-user.target" ];
@@ -199,7 +198,7 @@
       script = ''
       twist --log-format=text web \
         --path ${s4signupwebsite} \
-        --port x-onion:public_port=80:controlPort=${toString torControlPort}:privateKeyPath=/run/keys/signup-website-tor-onion-service-v3.secret
+        --port onion:public_port=80:controlPort=${toString torControlPort}:privateKeyFile=/run/keys/signup-website-tor-onion-service-v3.secret
       '';
     };
   };
