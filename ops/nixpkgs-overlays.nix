@@ -17,10 +17,12 @@ rec {
   python3 = super.python3.override
   { packageOverrides = py-self: py-super:
     { txtorcon = py-super.txtorcon.overrideAttrs(old:
-      { src = self.pkgs.fetchgit
+      { version = "18.3.0";
+        name = "txtorcon-18.3.0";
+        src = self.pkgs.fetchgit
         { url = "https://github.com/meejah/txtorcon";
-          sha256 = "185sbraqbd209kqnlrq90hv71bi1m758q97ilj8bh99z73c5xf3n";
-          rev = "v18.2.0";
+          sha256 = "1n4ladjy8sx2x6vydpyx6c37glfh49n5a8vk91aclnw635i2dq7m";
+          rev = "v18.3.0";
         };
       });
     };
