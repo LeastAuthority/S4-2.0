@@ -1,4 +1,22 @@
 # Describe the software to run on the infrastructure described by s4-ec2.nix.
+let
+  txtorconService = pkgs: keyService: script:
+  { unitConfig.Documentation = "https://leastauthority.com/";
+
+    path = [ (pkgs.python3.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
+
+    # Get it to start as a part of the normal boot process.
+    wantedBy    = [ "multi-user.target" ];
+
+    # Make sure Tor is up and our keys are available.
+    # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
+    requires = [ "tor.service" keyService ];
+    # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
+    after = [ "tor.service" keyService ];
+
+    inherit script;
+  };
+in
 {
   network.description = "Zcash server";
 
@@ -181,33 +199,19 @@
      * Operate a static website allowing user signup, exposed via the Tor
      * hidden service.
      */
-    systemd.services."signup-website" =
-    { unitConfig.Documentation = "https://leastauthority.com/";
-      description = "The S4 2.0 signup website.";
-
-      path = [ (pkgs.python3.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
-
-      # Get it to start as a part of the normal boot process.
-      wantedBy    = [ "multi-user.target" ];
-
-      # Make sure Tor is up and our keys are available.
-      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
-      requires = [ "tor.service" "signup-website-tor-onion-service-v3.secret-key.service" ];
-      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
-      after = [ "tor.service" "signup-website-tor-onion-service-v3.secret-key.service" ];
-
-      # Run an Onion-to-HTTPS port forward to expose the website at an Onion
-      # service address.  Use the x-onion endpoint here so that we can refer
-      # directly to the key file.  This is nicer than using the "hidden
-      # service directory" feature which requires a more complex directory
-      # structure, requires us to supply more files, and has weird
-      # file-rewriting behavior we don't want.
-      script = ''
-      twist --log-format=text web \
-        --path ${s4signupwebsite} \
-        --port onion:public_port=80:controlPort=${toString torControlPort}:privateKeyFile=/run/keys/signup-website-tor-onion-service-v3.secret:singleHop=true
-      '';
-    };
+   systemd.services."signup-website" =
+   let keyService = "signup-website-tor-onion-service-v3.secret-key.service";
+       # Run an Onion-to-HTTPS port forward to expose the website at an Onion
+       # service address.
+       script =
+       ''
+       twist --log-format=text web \
+             --path ${s4signupwebsite} \
+             --port onion:public_port=80:controlPort=${toString torControlPort}:privateKeyFile=/run/keys/signup-website-tor-onion-service-v3.secret:singleHop=true
+       '';
+       description = "The S4 2.0 signup website.";
+   in
+   txtorconService pkgs keyService script // { inherit description; };
 
     # Create a local-only nginx proxy server that will accept cleartext
     # requests and proxy them to the HTTPS main website server.
@@ -216,17 +220,27 @@
       error_log logs/error.log debug;
     '';
 
+    # Configure the Onion Service hostname as a virtual host on nginx which
+    # proxies to the main website.
+    # services.nginx.upstreams.cloudfront =
+    # { servers =
+    #   { "leastauthority.com" = { };
+    #   };
+    # };
     services.nginx.virtualHosts =
-    { ${ builtins.readFile ./secrets/onion-services/v3/main-website.hostname } =
+    { "leastauthority-main-website" =
       { locations."/" =
-        { proxyPass = "https://leastauthority.com";
+        { proxyPass = "https://leastauthority.com/";
           extraConfig = ''
             # The proxy upstream target only works with SNI.  Make sure that is on.
             proxy_ssl_server_name on;
-            # Regardless of the request host, this is what makes sense for upstream.
-            proxy_set_header Host leastauthority.com;
+            # # Regardless of the request host, this is what makes sense for upstream.
+            # proxy_set_header Host leastauthority.com;
+            proxy_ssl_name leastauthority.com;
             # Verify the upstream target certificate!  This is not the default.
             proxy_ssl_verify on;
+            # Point at a CA certificate bundle for certificate verification.
+            proxy_ssl_trusted_certificate ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt;
           '';
         };
         listen = [ { addr = "127.0.0.1"; port = mainWebsiteProxyPort; } ];
@@ -237,27 +251,16 @@
     # Create an Onion service that proxies cleartext connections to the local
     # cleartext nginx proxy server.
     systemd.services."main-website" =
-    { unitConfig.Documentation = "https://leastauthority.com/";
-      description = "The overall Least Authority website with all content.";
-
-      path = [ (pkgs.python27.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
-
-      # Get it to start as a part of the normal boot process.
-      wantedBy    = [ "multi-user.target" ];
-
-      # Make sure Tor is up and our keys are available.
-      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
-      requires = [ "tor.service" "main-website-tor-onion-service-v3.secret-key.service" ];
-      # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
-      after = [ "tor.service" "main-website-tor-onion-service-v3.secret-key.service" ];
-
-      script = ''
-      twist --log-format=text portforward \
-        --port x-onion:public_port=80:controlPort=${toString torControlPort}:privateKeyPath=/run/keys/main-website-tor-onion-service-v3.secret \
-        --dest_port ${toString mainWebsiteProxyPort}
-      '';
-    };
-
+    let keyService = "main-website-tor-onion-service-v3.secret-key.service";
+        script =
+        ''
+        twist --log-format=text portforward \
+              --port onion:public_port=80:controlPort=${toString torControlPort}:privateKeyFile=/run/keys/main-website-tor-onion-service-v3.secret:singleHop=true \
+              --dest_port ${toString mainWebsiteProxyPort}
+        '';
+        description = "The overall Least Authority website with all content.";
+    in
+    txtorconService pkgs keyService script // { inherit description; };
   };
 
 }
