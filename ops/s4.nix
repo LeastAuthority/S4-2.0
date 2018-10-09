@@ -222,11 +222,6 @@ in
 
     # Configure the Onion Service hostname as a virtual host on nginx which
     # proxies to the main website.
-    # services.nginx.upstreams.cloudfront =
-    # { servers =
-    #   { "leastauthority.com" = { };
-    #   };
-    # };
     services.nginx.virtualHosts =
     { "leastauthority-main-website" =
       { locations."/" =
