@@ -241,6 +241,11 @@ in
             proxy_ssl_verify on;
             # Point at a CA certificate bundle for certificate verification.
             proxy_ssl_trusted_certificate ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt;
+            # nginx has a default verify depth of 1 instead of the more
+            # typical 9.  depth of 1 is too low to verify the
+            # leastauthority.com certificate.  raise the value back to
+            # something more sensible.
+            proxy_ssl_verify_depth 9;
           '';
         };
         listen = [ { addr = "127.0.0.1"; port = mainWebsiteProxyPort; } ];
