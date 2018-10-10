@@ -5,7 +5,7 @@
 let
   region = "eu-west-1";
   accessKeyId = "leastauthority-staging";
-  zcashnode =
+  infra =
   { config, pkgs, resources, ... }:
   { deployment.targetEnv = "ec2";
     deployment.ec2.accessKeyId = accessKeyId;
@@ -29,8 +29,8 @@ let
 };
 in
 {
-  zcashnode = zcashnode;
   devnode = devnode;
+  infra = infra;
   resources.ec2KeyPairs.my-key-pair =
   { inherit region accessKeyId; };
 }
