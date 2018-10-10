@@ -110,7 +110,11 @@ This limits the damage that can be done should the wallet be compromised
 (transactions can be read but funds cannot be spent).
 
 The master spending key(s) are maintained elsewhere.
-The wallet on the S4 2.0 deployment is given viewing keys for import.
+Each subscription is assigned a unique `Sprout z-addr<https://github.com/LeastAuthority/S4-2.0/issues/38>`_.
+As new subscriptions are created and addresses available on the node are allocated,
+the "pool" of addresses is diminished.
+Before the pool empties,
+new viewing keys are imported into the wallet.
 
 Tor
 ---
