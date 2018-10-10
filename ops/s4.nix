@@ -27,7 +27,7 @@ in
     nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
   };
 
-  zcashnode =
+  infra =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
