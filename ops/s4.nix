@@ -65,8 +65,7 @@ let
     };
   };
 in
-{
-  network.description = "Zcash server";
+{ network.description = "S4-2.0";
 
   defaults = { ... }:
   {
