@@ -74,6 +74,11 @@ in
     nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
   };
 
+  # The lockbox node runs a Zcash node and contains the master keys for
+  # payment addresses used by the service.  That is, this is the node with the
+  # authority to spend money earned by the service.  It is kept minimal and is
+  # expected to be deployed in a way that is consistent with this authority
+  # (specifically with respect to its physical and operational security).
   lockbox =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
