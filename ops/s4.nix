@@ -75,6 +75,30 @@ in
     nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
   };
 
+  lockbox =
+  { lib, pkgs, ... }:
+  let zcash = pkgs.callPackage ./zcash/default.nix { };
+  in
+  { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
+
+    users.users.zcash =
+    { isNormalUser = true;
+      home = "/var/lib/zcashd";
+      description = "Runs a full Zcash node";
+    };
+
+    environment.systemPackages = [
+      zcash
+      # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
+      # package bug that we have to specify it.
+      pkgs.utillinux
+      # Also required by zcash-fetch-params.
+      pkgs.wget
+    ];
+
+    systemd.services.zcashd = zcashdService pkgs zcash;
+  };
+
   infra =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
