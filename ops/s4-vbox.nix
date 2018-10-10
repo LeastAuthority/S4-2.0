@@ -1,5 +1,5 @@
 { bridgeAdapter }:
-{ zcashnode =
+{ infra =
     { config, pkgs, ... }:
     { deployment.targetEnv = "virtualbox";
       deployment.virtualbox.memorySize = 8192; # megabytes
