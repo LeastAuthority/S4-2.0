@@ -97,7 +97,7 @@ Components
 Zcash
 -----
 
-A non-mining Zcash full node is included as part of this deployment.
+A non-mining Zcash Sapling full node is included as part of this deployment.
 This allows for processing of Zcash shielded transactions.
 The Zcash deployment is primarily configured using ``zcashnode`` in ``s4.nix``.
 
@@ -105,7 +105,7 @@ Wallet
 ``````
 
 z-addr keys are required to process incoming transactions representing subscription payments.
-The wallet contains only the viewing keys for these transactions.
+The wallet contains *only* the viewing keys necessary for this processing.
 This limits the damage that can be done should the wallet be compromised
 (transactions can be read but funds cannot be spent).
 
