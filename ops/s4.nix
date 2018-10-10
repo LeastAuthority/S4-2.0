@@ -98,6 +98,11 @@ in
     systemd.services.zcashd = zcashdService pkgs zcash;
   };
 
+  # The infrastructure node runs various "fixed overhead" services.  For
+  # example, a Zcash node for observing incoming payments and a Tor daemon for
+  # providing Onion access to the Least Authority website.  These services are
+  # not expected to need to scale horizontally.  They may eventually need to
+  # be made redundant somehow to ensure availability.
   infra =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
