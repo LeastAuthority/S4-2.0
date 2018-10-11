@@ -3,29 +3,30 @@
  */
 { stdenv, fetchFromGitHub, rustPlatform }:
 rustPlatform.buildRustPackage rec {
-  version = "2018-09-10";
+  version = "2018-10-11";
   name = "librustzcash-unstable-${version}";
 
   src = fetchFromGitHub {
     owner = "zcash";
     repo = "librustzcash";
-    /*
-     * This is just a recent revision that I found works with Zcash 2.0.0.
-     */
-    rev = "e1c6232dd7a5368aa9342649d73db27522cc8d6e";
+
+    # This is the revision specified by <zcash/depends/librustzcash.mk>.  For
+    # minimum surprises, we want to stick with the version that the upstream
+    # build scripts select.
+    rev = "f5e5cb24e1bd756a02fc4a3fd2b824238ccd15ad";
 
     /*
      * Give the correct source hash to satisfy buildRustPackage that we're
      * building against the source we expected.
      */
-    sha256 = "1dc249kj039kwyi3hy2dqikq5h3m0an95ffhkdngrq1yivn240h6";
+    sha256 = "0dsdp00w43xdhbgq25px6h4k2fhm9zyy2s9wy1slr9y27rlcb0ab";
   };
 
   /*
    * Give the correct Cargo hash to satisfy buildRustPackage that we're
    * building against the dependencies we expected.
    */
-  cargoSha256 = "0vcfj7h6279s1a2fv2m7mzl60rv20jnk4rqrn68jg9spxcndslpc";
+  cargoSha256 = "18aax340ni7qr00vf19fdz9wvcwk849ka2m2d9wvwvf51kc0gcdq";
 
   /*
    * Replace the blake2-rfc git revision dependency with a vendored copy of
