@@ -35,13 +35,13 @@ in
  * what's necessary to get us to 2.0.0.
  */
   (zcash.override overrides).overrideAttrs (old:
-  rec { version = "2.0.0";
+  rec { version = "2.0.1-rc1";
         name = "zcashd-" + version;
         src = fetchFromGitHub
         { owner = "zcash";
           repo = "zcash";
-          rev = "v2.0.0";
-          sha256 = "0n18amzk96dncrvar5w8wxz75is2gjmrm643k37rxd8z2k1m9rbj";
+          rev = "v" + version;
+          sha256 = "0i9vhjjgdh9pzax5ykp4gvpwy6zbyravzc1d73vz7sdrjyqysfy6";
         };
         patchPhase = old.patchPhase + ''
           # Cargo-culted based on upstream patchPhase.  Have not verified it
