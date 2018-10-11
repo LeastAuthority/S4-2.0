@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+from sys import argv
+from json import dumps
+from subprocess import check_output
+
+from requests import post
+
+def main(deployment):
+    lockbox = NixopsZcash(deployment, "lockbox")
+    infra = NixopsZcash(deployment, "infra")
+
+    zaddr = lockbox.z_getnewaddress()
+    zaddr_viewing_key = lockbox.z_exportviewingkey(zaddr)
+    infra.z_importviewingkey(zaddr_viewing_key)
+
+
+class NixopsZcash(object):
+    def __init__(self, deployment, node):
+        self.deployment = deployment
+        self.node = node
+
+    def z_getnewaddress(self):
+        return _z_cli(self.deployment, self.node, "z_getnewaddress")
+
+    def z_exportviewingkey(self, zaddr):
+        return _z_cli(self.deployment, self.node, "z_exportviewingkey", zaddr)
+
+
+    def z_importviewingkey(self, viewing_key):
+        rescan = "no"
+        return _z_cli(self.deployment, self.node, "z_importviewingkey", viewing_key, rescan)
+
+
+def _z_cli(deployment, node, method, *args):
+    conf = "systemctl show zcashd | grep 'ExecStart=' | sed -r -e 's/.*-conf=([^ ]+) .*/\\1/'"
+    return check_output([
+        "nixops", "ssh", "--deployment", deployment, node,
+        "--",
+        "sudo", "-H", "-u", "zcash",
+        "zcash-cli", "-rpcport=18232", "-conf=$({})".format(conf), method,
+    ] + list(args)).strip()
+
+
+def _z_rpc(base_url, method, **kwargs):
+    print(post(
+        base_url,
+        dumps({
+            "request": {
+                "method": method,
+                "params": kwargs,
+            },
+        }),
+    ))
+
+if __name__ == '__main__':
+    main(argv[1])
