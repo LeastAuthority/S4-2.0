@@ -38,14 +38,14 @@ rustPlatform.buildRustPackage rec {
    * accomplish much the same goal for all of the rest of the dependencies.
    * We only need to append this extra section to what's there already.
    */
-  prePatch = ''
-cat >>../.cargo/config <<EOF
-[source."https://github.com/gtank/blake2-rfc"]
-git = "https://github.com/gtank/blake2-rfc"
-rev = "7a5b5fc99ae483a0043db7547fb79a6fa44b88a9"
-replace-with = "vendored-sources"
-EOF
-'';
+#   prePatch = ''
+# cat >>../.cargo/config <<EOF
+# [source."https://github.com/gtank/blake2-rfc"]
+# git = "https://github.com/gtank/blake2-rfc"
+# rev = "7a5b5fc99ae483a0043db7547fb79a6fa44b88a9"
+# replace-with = "vendored-sources"
+# EOF
+# '';
 
   checkPhase = ''
     runHook preCheck
