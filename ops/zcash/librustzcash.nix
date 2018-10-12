@@ -28,25 +28,6 @@ rustPlatform.buildRustPackage rec {
    */
   cargoSha256 = "18aax340ni7qr00vf19fdz9wvcwk849ka2m2d9wvwvf51kc0gcdq";
 
-  /*
-   * Replace the blake2-rfc git revision dependency with a vendored copy of
-   * the very same source.  This is necessary to satisfy buildRustPackage
-   * which otherwise attempts to regenerate Cargo.lock which is impossible
-   * during a nix build.
-   *
-   * The cargo config file is first written by buildRustPackage itself to
-   * accomplish much the same goal for all of the rest of the dependencies.
-   * We only need to append this extra section to what's there already.
-   */
-#   prePatch = ''
-# cat >>../.cargo/config <<EOF
-# [source."https://github.com/gtank/blake2-rfc"]
-# git = "https://github.com/gtank/blake2-rfc"
-# rev = "7a5b5fc99ae483a0043db7547fb79a6fa44b88a9"
-# replace-with = "vendored-sources"
-# EOF
-# '';
-
   checkPhase = ''
     runHook preCheck
     echo "Running cargo test --release"
