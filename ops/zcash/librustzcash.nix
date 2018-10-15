@@ -10,9 +10,9 @@ rustPlatform.buildRustPackage rec {
     owner = "zcash";
     repo = "librustzcash";
 
-    # This is the revision specified by <zcash/depends/librustzcash.mk>.  For
-    # minimum surprises, we want to stick with the version that the upstream
-    # build scripts select.
+    # Use the revision specified by <zcash/depends/packages/librustzcash.mk>.
+    # For minimum surprises, we want to stick with the version that the
+    # upstream build scripts select.
     rev = "f5e5cb24e1bd756a02fc4a3fd2b824238ccd15ad";
 
     /*
