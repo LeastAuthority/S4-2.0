@@ -97,24 +97,29 @@ Components
 Zcash
 -----
 
-A non-mining Zcash Sapling full node is included as part of this deployment.
+Multiple non-mining Zcash Sapling full nodes are included as part of this deployment.
 This allows for processing of Zcash shielded transactions.
-The Zcash deployment is primarily configured using ``zcashnode`` in ``s4.nix``.
+The Zcash deployment is configured in ``ops/s4.nix`` via ``zcashdService``.
+
+A **lockbox** node is provisioned for maximum resistance to key compromise and holds spending keys.
+An **infra** node is provisioned for off-premise deployment and holds only viewing keys.
 
 Wallet
 ``````
 
 z-addr keys are required to process incoming transactions representing subscription payments.
-The wallet contains *only* the viewing keys necessary for this processing.
+The **infra** wallet contains *only* the viewing keys necessary for this processing.
 This limits the damage that can be done should the wallet be compromised
 (transactions can be read but funds cannot be spent).
 
-The master spending key(s) are maintained elsewhere.
+The master spending key(s) are maintained on the **lockbox** node.
 Each subscription is assigned a unique `Sprout z-addr<https://github.com/LeastAuthority/S4-2.0/issues/38>`_.
 As new subscriptions are created and addresses available on the node are allocated,
 the "pool" of addresses is diminished.
 Before the pool empties,
-new viewing keys are imported into the wallet.
+new viewing keys are generated in the **lockbox** wallet and imported into the **infra** wallet.
+
+``bin/load-some-more-keys`` automates this process of key creation and movement.
 
 Tor
 ---
