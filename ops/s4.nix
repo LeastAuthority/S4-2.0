@@ -16,7 +16,7 @@ let
 
     inherit script;
   };
-  zcashdService = pkgs: zcash:
+  zcashdService = pkgs:
   # Write the Zcashd configuration file and remember where it is for
   # later.
   let conf = pkgs.writeText "zcash.conf"
@@ -49,7 +49,7 @@ let
       PrivateTmp              = "yes";
       # PrivateNetwork          = "yes";
       # NoNewPrivileges         = "yes";
-      # ReadWriteDirectories    = "${zcash}/bin /var/lib/zcashd";
+      # ReadWriteDirectories    = "${pkgs.zcash}/bin /var/lib/zcashd";
       # InaccessibleDirectories = "/home";
       StateDirectory          = "zcashd";
 
@@ -57,11 +57,11 @@ let
       # from the network.  This only needs to happen once.  Currently we try
       # to do it every time we're about to start the node.  Maybe this can
       # be improved.
-      ExecStartPre            = "${zcash}/bin/zcash-fetch-params";
+      ExecStartPre            = "${pkgs.zcash}/bin/zcash-fetch-params";
 
       # Rely on $HOME to set the location of most Zcashd inputs.  The
       # configuration file is an exception as it lives in the store.
-      ExecStart               = "${zcash}/bin/zcashd -conf=${conf}";
+      ExecStart               = "${pkgs.zcash}/bin/zcashd -conf=${conf}";
     };
   };
 in
@@ -81,8 +81,6 @@ in
   # (specifically with respect to its physical and operational security).
   lockbox =
   { lib, pkgs, ... }:
-  let zcash = pkgs.callPackage ./zcash/default.nix { };
-  in
   { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
 
     users.users.zcash =
@@ -92,7 +90,7 @@ in
     };
 
     environment.systemPackages = [
-      zcash
+      pkgs.zcash
       # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
       # package bug that we have to specify it.
       pkgs.utillinux
@@ -100,7 +98,7 @@ in
       pkgs.wget
     ];
 
-    systemd.services.zcashd = zcashdService pkgs zcash;
+    systemd.services.zcashd = zcashdService pkgs;
   };
 
   # The infrastructure node runs various "fixed overhead" services.  For
@@ -110,8 +108,7 @@ in
   # be made redundant somehow to ensure availability.
   infra =
   { lib, pkgs, ... }:
-  let zcash = pkgs.callPackage ./zcash/default.nix { };
-      s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
+  let s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
       mainWebsiteProxyPort = 9061;
   in
@@ -143,7 +140,7 @@ in
     users.users.tor.group = lib.mkForce "keys";
 
     environment.systemPackages = [
-      zcash
+      pkgs.zcash
       # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
       # package bug that we have to specify it.
       pkgs.utillinux
@@ -151,7 +148,7 @@ in
       pkgs.wget
     ];
 
-    systemd.services.zcashd = zcashdService pkgs zcash;
+    systemd.services.zcashd = zcashdService pkgs;
 
     /*
      * Run a Tor node so we can operate a hidden service to allow user signup.
