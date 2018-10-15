@@ -10,18 +10,60 @@
 #
 
 from sys import argv
-from json import dumps
+from json import dumps, loads
 from subprocess import check_output
 
 from requests import post
 
-def main(deployment):
+def main(deployment, zaddr_viewing_key=None):
     lockbox = NixopsZcash(deployment, "lockbox")
     infra = NixopsZcash(deployment, "infra")
 
-    zaddr = lockbox.z_getnewaddress()
-    zaddr_viewing_key = lockbox.z_exportviewingkey(zaddr)
-    infra.z_importviewingkey(zaddr_viewing_key)
+    if zaddr_viewing_key is None:
+        zaddr = lockbox.z_getnewaddress()
+        zaddr_viewing_key = lockbox.z_exportviewingkey(zaddr)
+
+    possibly_new = import_viewing_key(infra, zaddr_viewing_key)
+
+    if has_viewing_key(infra, possibly_new, zaddr_viewing_key):
+        print("Transferred viewing key {}".format(zaddr_viewing_key))
+    else:
+        print("Failed to transfer viewing key {}".format(zaddr_viewing_key))
+
+
+def has_viewing_key(node, possibly_new, zaddr_viewing_key):
+    """
+    :return bool: True if ``zaddr_viewing_key`` belongs to one of the zaddrs
+        in ``possibly_new`` on ``node``.  False otherwise.
+    """
+    for zaddr in possibly_new:
+        new_viewing_key = node.z_exportviewingkey(zaddr)
+        if zaddr_viewing_key == new_viewing_key:
+            return True
+    return False
+
+
+def import_viewing_key(node, zaddr_viewing_key):
+    """
+    Import a viewing key on node.
+
+    :return set: The smallest set of zaddrs which might correspond to
+        ``zaddr_viewing_key``.  This is intended to be used to verify that the
+        import was successful.
+    """
+
+    before = set(loads(node.z_listaddresses(include_viewing=True)))
+    node.z_importviewingkey(zaddr_viewing_key)
+    after = set(loads(node.z_listaddresses(include_viewing=True)))
+    new = after - before
+    if not new:
+        new = after
+    return new
+
+
+def debug(s):
+    # print(s)
+    pass
 
 
 class NixopsZcash(object):
@@ -40,19 +82,32 @@ class NixopsZcash(object):
         rescan = "no"
         return _z_cli(self.deployment, self.node, "z_importviewingkey", viewing_key, rescan)
 
+    def z_listaddresses(self, include_viewing):
+        if include_viewing:
+            extra_args = ("true",)
+        else:
+            extra_args = ()
+        return _z_cli(self.deployment, self.node, "z_listaddresses", *extra_args)
+
 
 def _z_cli(deployment, node, method, *args):
     conf = "systemctl show zcashd | grep 'ExecStart=' | sed -r -e 's/.*-conf=([^ ]+) .*/\\1/'"
-    return check_output([
+    command = [
         "nixops", "ssh", "--deployment", deployment, node,
         "--",
         "sudo", "-H", "-u", "zcash",
-        "zcash-cli", "-rpcport=18232", "-conf=$({})".format(conf), method,
-    ] + list(args)).strip()
+        "zcash-cli", "-rpcconnect=::1", "-rpcport=18232", "-conf=$({})".format(conf), method,
+    ] + list(args)
+    debug("{}/{}$ {}".format(deployment, node, " ".join(informal_shell_quote(arg) for arg in command)))
+    return check_output(command).strip().decode("ascii")
+
+
+def informal_shell_quote(s):
+    return "'" + s.replace("'", "'\\''") + "'"
 
 
 def _z_rpc(base_url, method, **kwargs):
-    print(post(
+    debug(post(
         base_url,
         dumps({
             "request": {
@@ -63,4 +118,4 @@ def _z_rpc(base_url, method, **kwargs):
     ))
 
 if __name__ == '__main__':
-    main(argv[1])
+    main(*argv[1:])
