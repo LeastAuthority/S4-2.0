@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+#
+# Create a new zaddr on the lockbox node and then transfer its viewing key to
+# the infrastructure node.
+#
+# Usage:
+#
+#    ./bin/load-some-more-keys [ deployment [ existing viewing key ] ]
+#
+
 from sys import argv
 from json import dumps
 from subprocess import check_output
