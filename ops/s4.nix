@@ -3,6 +3,7 @@ let
   overlays = [ (import ./nixpkgs-overlays.nix) ];
   services = (import <nixpkgs> { inherit overlays; }).callPackage ./services.nix { };
   tor = import ./tor.nix;
+  nginx = import ./nginx.nix;
   zcashUser =
   { isNormalUser = true;
     home = "/var/lib/zcashd";
@@ -168,39 +169,15 @@ in
    services.txtorconService keyService script // { inherit description; };
 
     # Create a local-only nginx proxy server that will accept cleartext
-    # requests and proxy them to the HTTPS main website server.
-    services.nginx.enable = true;
-    services.nginx.appendConfig = ''
-      error_log logs/error.log debug;
-    '';
-
-    # Configure the Onion Service hostname as a virtual host on nginx which
-    # proxies to the main website.
-    services.nginx.virtualHosts =
-    { "leastauthority-main-website" =
-      { locations."/" =
-        { proxyPass = "https://leastauthority.com/";
-          extraConfig = ''
-            # The proxy upstream target only works with SNI.  Make sure that is on.
-            proxy_ssl_server_name on;
-            # # Regardless of the request host, this is what makes sense for upstream.
-            # proxy_set_header Host leastauthority.com;
-            proxy_ssl_name leastauthority.com;
-            # Verify the upstream target certificate!  This is not the default.
-            proxy_ssl_verify on;
-            # Point at a CA certificate bundle for certificate verification.
-            proxy_ssl_trusted_certificate ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt;
-            # nginx has a default verify depth of 1 instead of the more
-            # typical 9.  depth of 1 is too low to verify the
-            # leastauthority.com certificate.  raise the value back to
-            # something more sensible.
-            proxy_ssl_verify_depth 9;
-          '';
-        };
+    # requests (received via an Onion service, typically) and proxy them to
+    # the HTTPS main website server.
+    services.nginx = nginx.cleartextToHTTPSProxy
+      pkgs
+      "leastauthority-main-website"
+      { proxyPass = "https://leastauthority.com/";
         listen = [ { addr = "127.0.0.1"; port = mainWebsiteProxyPort; } ];
         serverName = "leastauthority.com";
       };
-    };
 
     # Create an Onion service that proxies cleartext connections to the local
     # cleartext nginx proxy server.
