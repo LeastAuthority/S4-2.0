@@ -11,13 +11,7 @@ let
   };
   zcashPorts = [ 18232 18233 ];
   zcashPackages = pkgs:
-  [
-    pkgs.zcash
-    # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
-    # package bug that we have to specify it.
-    pkgs.utillinux
-    # Also required by zcash-fetch-params.
-    pkgs.wget
+  [ pkgs.zcash
   ];
 in
 { network.description = "S4-2.0";
