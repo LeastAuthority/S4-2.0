@@ -2,6 +2,21 @@
 let
   overlays = [ (import ./nixpkgs-overlays.nix) ];
   services = (import <nixpkgs> { inherit overlays; }).callPackage ./services.nix { };
+  zcashUser =
+  { isNormalUser = true;
+    home = "/var/lib/zcashd";
+    description = "Runs a full Zcash node";
+  };
+  zcashPorts = [ 18232 18233 ];
+  zcashPackages =
+  [
+    pkgs.zcash
+    # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
+    # package bug that we have to specify it.
+    pkgs.utillinux
+    # Also required by zcash-fetch-params.
+    pkgs.wget
+  ];
 in
 { network.description = "S4-2.0";
 
@@ -19,23 +34,9 @@ in
   # (specifically with respect to its physical and operational security).
   lockbox =
   { lib, pkgs, ... }:
-  { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
-
-    users.users.zcash =
-    { isNormalUser = true;
-      home = "/var/lib/zcashd";
-      description = "Runs a full Zcash node";
-    };
-
-    environment.systemPackages = [
-      pkgs.zcash
-      # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
-      # package bug that we have to specify it.
-      pkgs.utillinux
-      # Also required by zcash-fetch-params.
-      pkgs.wget
-    ];
-
+  { networking.firewall.allowedTCPPorts = zcashPorts;
+    users.users.zcash = zcashUser;
+    environment.systemPackages = zcashPackages;
     systemd.services.zcashd = services.zcashdService;
   };
 
@@ -51,13 +52,10 @@ in
       mainWebsiteProxyPort = 9061;
   in
   # Allow the two Zcash protocol ports.
-  { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
-
-    users.users.zcash =
-    { isNormalUser = true;
-      home = "/var/lib/zcashd";
-      description = "Runs a full Zcash node";
-    };
+  { networking.firewall.allowedTCPPorts = zcashPorts;
+    users.users.zcash = zcashUser;
+    systemd.services.zcashd = services.zcashdService;
+    environment.systemPackages = zcashPackages;
 
     /*
      * Nix-generated Tor configuration file has a `User tor` that we cannot
@@ -76,17 +74,6 @@ in
      * keys on the disk or something?
      */
     users.users.tor.group = lib.mkForce "keys";
-
-    environment.systemPackages = [
-      pkgs.zcash
-      # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
-      # package bug that we have to specify it.
-      pkgs.utillinux
-      # Also required by zcash-fetch-params.
-      pkgs.wget
-    ];
-
-    systemd.services.zcashd = services.zcashdService;
 
     /*
      * Run a Tor node so we can operate a hidden service to allow user signup.
