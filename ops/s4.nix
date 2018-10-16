@@ -1,6 +1,7 @@
 # Describe the software to run on the infrastructure described by s4-ec2.nix.
 let
-  services = import ./services.nix { };
+  overlays = [ (import ./nixpkgs-overlays.nix) ];
+  services = (import <nixpkgs> { inherit overlays; }).callPackage ./services.nix { };
 in
 { network.description = "S4-2.0";
 
@@ -8,7 +9,7 @@ in
   {
     # Arrange for some packages to be overridden with different versions on
     # all machines.
-    nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
+    nixpkgs.overlays = overlays;
   };
 
   # The lockbox node runs a Zcash node and contains the master keys for
@@ -35,7 +36,7 @@ in
       pkgs.wget
     ];
 
-    systemd.services.zcashd = services.zcashdService pkgs;
+    systemd.services.zcashd = services.zcashdService;
   };
 
   # The infrastructure node runs various "fixed overhead" services.  For
@@ -85,7 +86,7 @@ in
       pkgs.wget
     ];
 
-    systemd.services.zcashd = services.zcashdService pkgs;
+    systemd.services.zcashd = services.zcashdService;
 
     /*
      * Run a Tor node so we can operate a hidden service to allow user signup.
@@ -179,7 +180,7 @@ in
        '';
        description = "The S4 2.0 signup website.";
    in
-   services.txtorconService pkgs keyService script // { inherit description; };
+   services.txtorconService keyService script // { inherit description; };
 
     # Create a local-only nginx proxy server that will accept cleartext
     # requests and proxy them to the HTTPS main website server.
@@ -228,7 +229,7 @@ in
         '';
         description = "The overall Least Authority website with all content.";
     in
-    services.txtorconService pkgs keyService script // { inherit description; };
+    services.txtorconService keyService script // { inherit description; };
   };
 
 }

@@ -1,6 +1,6 @@
-{ ... }:
+{ pkgs, ... }:
 {
-  txtorconService = pkgs: keyService: script:
+  txtorconService = keyService: script:
   { unitConfig.Documentation = "https://leastauthority.com/";
 
     path = [ (pkgs.python3.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
@@ -16,7 +16,7 @@
 
     inherit script;
   };
-  zcashdService = pkgs:
+  zcashdService =
   # Write the Zcashd configuration file and remember where it is for
   # later.
   let conf = pkgs.writeText "zcash.conf"
