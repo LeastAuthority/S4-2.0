@@ -2,13 +2,14 @@
 let
   overlays = [ (import ./nixpkgs-overlays.nix) ];
   services = (import <nixpkgs> { inherit overlays; }).callPackage ./services.nix { };
+  tor = import ./tor.nix;
   zcashUser =
   { isNormalUser = true;
     home = "/var/lib/zcashd";
     description = "Runs a full Zcash node";
   };
   zcashPorts = [ 18232 18233 ];
-  zcashPackages =
+  zcashPackages = pkgs:
   [
     pkgs.zcash
     # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
@@ -36,7 +37,7 @@ in
   { lib, pkgs, ... }:
   { networking.firewall.allowedTCPPorts = zcashPorts;
     users.users.zcash = zcashUser;
-    environment.systemPackages = zcashPackages;
+    environment.systemPackages = zcashPackages pkgs;
     systemd.services.zcashd = services.zcashdService;
   };
 
@@ -55,7 +56,7 @@ in
   { networking.firewall.allowedTCPPorts = zcashPorts;
     users.users.zcash = zcashUser;
     systemd.services.zcashd = services.zcashdService;
-    environment.systemPackages = zcashPackages;
+    environment.systemPackages = zcashPackages pkgs;
 
     /*
      * Nix-generated Tor configuration file has a `User tor` that we cannot
@@ -85,11 +86,10 @@ in
      * daemon from other programs.
      */
     services.tor.controlPort = torControlPort;
-
-    services.tor.extraConfig = ''
+    services.tor.extraConfig = tor.extraConfig
+    {
       # Enable authentication on the ControlPort via a secret shared cookie.
-      CookieAuthentication 1
-
+      cookieAuthentication = true;
       # Quoting https://gitweb.torproject.org/torspec.git/tree/control-spec.txt
       #
       # Tor instances can either be in anonymous hidden service mode, or
@@ -109,17 +109,15 @@ in
       # protecting our location privacy.  This should offer some amount of
       # performance improvement as well due to the reduced number of hops to
       # reach the service.
-      #
-      HiddenServiceSingleHopMode 1
-      HiddenServiceNonAnonymousMode 1
-
+      hiddenServiceSingleHopMode = true;
+      hiddenServiceNonAnonymousMode = true;
       # We don't make outgoing Tor connections via the SOCKS proxy.  Disable
       # it.  This is also necessary to use HiddenServiceNonAnonymousMode.
       #
       # NixOS Tor support defaults to disabling "client" features but there
       # seems to be a bug where it leaves the Socks server enabled anyway.
-      SocksPort 0
-    '';
+      socksPort = 0;
+    };
 
     /*
      * Customize the Tor service so that it is able to read the keys with which
