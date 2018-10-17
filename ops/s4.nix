@@ -16,9 +16,56 @@ let
 
     inherit script;
   };
+  zcashdService = pkgs: zcash:
+  # Write the Zcashd configuration file and remember where it is for
+  # later.
+  let conf = pkgs.writeText "zcash.conf"
+  ''
+  # Operate on the test network while we're in development.
+  testnet=1
+  addnode=testnet.z.cash
+
+  # Don't be a miner.
+  gen=0
+  '';
+  in
+  { unitConfig.Documentation = "https://z.cash/";
+    description = "Zcashd running a non-mining Zcash full node";
+    # Get it to start as a part of the normal boot process.
+    wantedBy    = [ "multi-user.target" ];
+
+    # Make sure we have network connectivity before bothering to try to
+    # start zcashd.
+    requires = [ "network-online.target" ];
+
+    # Get zcash-fetch-params dependencies into its PATH.
+    path = [ pkgs.utillinux pkgs.wget ];
+
+    serviceConfig = {
+      Restart                 = "on-failure";
+      User                    = "zcash";
+      # Nice                    = 19;
+      # IOSchedulingClass       = "idle";
+      PrivateTmp              = "yes";
+      # PrivateNetwork          = "yes";
+      # NoNewPrivileges         = "yes";
+      # ReadWriteDirectories    = "${zcash}/bin /var/lib/zcashd";
+      # InaccessibleDirectories = "/home";
+      StateDirectory          = "zcashd";
+
+      # Parameters are required before a node can start.  These are fetched
+      # from the network.  This only needs to happen once.  Currently we try
+      # to do it every time we're about to start the node.  Maybe this can
+      # be improved.
+      ExecStartPre            = "${zcash}/bin/zcash-fetch-params";
+
+      # Rely on $HOME to set the location of most Zcashd inputs.  The
+      # configuration file is an exception as it lives in the store.
+      ExecStart               = "${zcash}/bin/zcashd -conf=${conf}";
+    };
+  };
 in
-{
-  network.description = "Zcash server";
+{ network.description = "S4-2.0";
 
   defaults = { ... }:
   {
@@ -27,7 +74,41 @@ in
     nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
   };
 
-  zcashnode =
+  # The lockbox node runs a Zcash node and contains the master keys for
+  # payment addresses used by the service.  That is, this is the node with the
+  # authority to spend money earned by the service.  It is kept minimal and is
+  # expected to be deployed in a way that is consistent with this authority
+  # (specifically with respect to its physical and operational security).
+  lockbox =
+  { lib, pkgs, ... }:
+  let zcash = pkgs.callPackage ./zcash/default.nix { };
+  in
+  { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
+
+    users.users.zcash =
+    { isNormalUser = true;
+      home = "/var/lib/zcashd";
+      description = "Runs a full Zcash node";
+    };
+
+    environment.systemPackages = [
+      zcash
+      # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
+      # package bug that we have to specify it.
+      pkgs.utillinux
+      # Also required by zcash-fetch-params.
+      pkgs.wget
+    ];
+
+    systemd.services.zcashd = zcashdService pkgs zcash;
+  };
+
+  # The infrastructure node runs various "fixed overhead" services.  For
+  # example, a Zcash node for observing incoming payments and a Tor daemon for
+  # providing Onion access to the Least Authority website.  These services are
+  # not expected to need to scale horizontally.  They may eventually need to
+  # be made redundant somehow to ensure availability.
+  infra =
   { lib, pkgs, ... }:
   let zcash = pkgs.callPackage ./zcash/default.nix { };
       s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
@@ -70,54 +151,7 @@ in
       pkgs.wget
     ];
 
-    systemd.services.zcashd =
-      # Write the Zcashd configuration file and remember where it is for
-      # later.
-      let conf = pkgs.writeText "zcash.conf"
-      ''
-      # Operate on the test network while we're in development.
-      testnet=1
-      addnode=testnet.z.cash
-
-      # Don't be a miner.
-      gen=0
-    '';
-    in
-    { unitConfig.Documentation = "https://z.cash/";
-      description = "Zcashd running a non-mining Zcash full node";
-      # Get it to start as a part of the normal boot process.
-      wantedBy    = [ "multi-user.target" ];
-
-      # Make sure we have network connectivity before bothering to try to
-      # start zcashd.
-      requires = [ "network-online.target" ];
-
-      # Get zcash-fetch-params dependencies into its PATH.
-      path = [ pkgs.utillinux pkgs.wget ];
-
-      serviceConfig = {
-        Restart                 = "on-failure";
-        User                    = "zcash";
-        # Nice                    = 19;
-        # IOSchedulingClass       = "idle";
-        PrivateTmp              = "yes";
-        # PrivateNetwork          = "yes";
-        # NoNewPrivileges         = "yes";
-        # ReadWriteDirectories    = "${zcash}/bin /var/lib/zcashd";
-        # InaccessibleDirectories = "/home";
-        StateDirectory          = "zcashd";
-
-        # Parameters are required before a node can start.  These are fetched
-        # from the network.  This only needs to happen once.  Currently we try
-        # to do it every time we're about to start the node.  Maybe this can
-        # be improved.
-        ExecStartPre            = "${zcash}/bin/zcash-fetch-params";
-
-        # Rely on $HOME to set the location of most Zcashd inputs.  The
-        # configuration file is an exception as it lives in the store.
-        ExecStart               = "${zcash}/bin/zcashd -conf=${conf}";
-      };
-    };
+    systemd.services.zcashd = zcashdService pkgs zcash;
 
     /*
      * Run a Tor node so we can operate a hidden service to allow user signup.
