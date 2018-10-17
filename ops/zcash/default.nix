@@ -1,7 +1,7 @@
 /*
- * Zcash 2.0.0 aka Zcash Sapling
+ * Zcash 2.0.1 aka Zcash Sapling
  */
-{ stdenv, pkgs, fetchFromGitHub, rustPlatform, gmp, libsodium, boost, callPackage }:
+{ lib, stdenv, pkgs, fetchFromGitHub, rustPlatform, gmp, libsodium, boost, callPackage }:
 /*
  * Get a sufficiently up-to-date version of librustzcash
  */
@@ -54,7 +54,27 @@ in
           sed -i"" 's,$(CXX) -o $@   $(GTEST_OBJS) $(LIBSNARK_A) $(CXXFLAGS) $(LDFLAGS) $(GTEST_LDLIBS) $(LDLIBS),,' src/snark/Makefile
         '';
 
+        postInstall =
+        let extraPath = lib.makeBinPath
+            [ # Provides flock, required by zcash-fetch-params.
+              pkgs.utillinux
+              # Also required by zcash-fetch-params.
+              pkgs.wget
+            ];
+        in
+        ''
+        ${old.postInstall}
+        # wrapProgram will only wrap things that are executable.
+        chmod u+x $out/bin/zcash-fetch-params
+
+        # Add utillinux (flock) and wget to fetch-params path since it tries
+        # to use them.
+        wrapProgram $out/bin/zcash-fetch-params --prefix PATH : ${extraPath}
+        '';
+
         buildInputs =
+        # Include a helper to fix zcash-fetch-params.
+        [ pkgs.makeWrapper ] ++
           /*
            * In the old build inputs, replace the old librustzcash with our
            * new one.  The usual (simpler) idiom for this replacement,

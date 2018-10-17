@@ -1,69 +1,18 @@
 # Describe the software to run on the infrastructure described by s4-ec2.nix.
 let
-  txtorconService = pkgs: keyService: script:
-  { unitConfig.Documentation = "https://leastauthority.com/";
-
-    path = [ (pkgs.python3.withPackages (ps: [ ps.twisted ps.txtorcon ])) ];
-
-    # Get it to start as a part of the normal boot process.
-    wantedBy    = [ "multi-user.target" ];
-
-    # Make sure Tor is up and our keys are available.
-    # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
-    requires = [ "tor.service" keyService ];
-    # https://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
-    after = [ "tor.service" keyService ];
-
-    inherit script;
+  overlays = [ (import ./nixpkgs-overlays.nix) ];
+  services = (import <nixpkgs> { inherit overlays; }).callPackage ./services.nix { };
+  tor = import ./tor.nix;
+  nginx = import ./nginx.nix;
+  zcashUser =
+  { isNormalUser = true;
+    home = "/var/lib/zcashd";
+    description = "Runs a full Zcash node";
   };
-  zcashdService = pkgs: zcash:
-  # Write the Zcashd configuration file and remember where it is for
-  # later.
-  let conf = pkgs.writeText "zcash.conf"
-  ''
-  # Operate on the test network while we're in development.
-  testnet=1
-  addnode=testnet.z.cash
-
-  # Don't be a miner.
-  gen=0
-  '';
-  in
-  { unitConfig.Documentation = "https://z.cash/";
-    description = "Zcashd running a non-mining Zcash full node";
-    # Get it to start as a part of the normal boot process.
-    wantedBy    = [ "multi-user.target" ];
-
-    # Make sure we have network connectivity before bothering to try to
-    # start zcashd.
-    requires = [ "network-online.target" ];
-
-    # Get zcash-fetch-params dependencies into its PATH.
-    path = [ pkgs.utillinux pkgs.wget ];
-
-    serviceConfig = {
-      Restart                 = "on-failure";
-      User                    = "zcash";
-      # Nice                    = 19;
-      # IOSchedulingClass       = "idle";
-      PrivateTmp              = "yes";
-      # PrivateNetwork          = "yes";
-      # NoNewPrivileges         = "yes";
-      # ReadWriteDirectories    = "${zcash}/bin /var/lib/zcashd";
-      # InaccessibleDirectories = "/home";
-      StateDirectory          = "zcashd";
-
-      # Parameters are required before a node can start.  These are fetched
-      # from the network.  This only needs to happen once.  Currently we try
-      # to do it every time we're about to start the node.  Maybe this can
-      # be improved.
-      ExecStartPre            = "${zcash}/bin/zcash-fetch-params";
-
-      # Rely on $HOME to set the location of most Zcashd inputs.  The
-      # configuration file is an exception as it lives in the store.
-      ExecStart               = "${zcash}/bin/zcashd -conf=${conf}";
-    };
-  };
+  zcashPorts = [ 18232 18233 ];
+  zcashPackages = pkgs:
+  [ pkgs.zcash
+  ];
 in
 { network.description = "S4-2.0";
 
@@ -71,7 +20,7 @@ in
   {
     # Arrange for some packages to be overridden with different versions on
     # all machines.
-    nixpkgs.overlays = [ (import ./nixpkgs-overlays.nix) ];
+    nixpkgs.overlays = overlays;
   };
 
   # The lockbox node runs a Zcash node and contains the master keys for
@@ -81,26 +30,10 @@ in
   # (specifically with respect to its physical and operational security).
   lockbox =
   { lib, pkgs, ... }:
-  let zcash = pkgs.callPackage ./zcash/default.nix { };
-  in
-  { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
-
-    users.users.zcash =
-    { isNormalUser = true;
-      home = "/var/lib/zcashd";
-      description = "Runs a full Zcash node";
-    };
-
-    environment.systemPackages = [
-      zcash
-      # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
-      # package bug that we have to specify it.
-      pkgs.utillinux
-      # Also required by zcash-fetch-params.
-      pkgs.wget
-    ];
-
-    systemd.services.zcashd = zcashdService pkgs zcash;
+  { networking.firewall.allowedTCPPorts = zcashPorts;
+    users.users.zcash = zcashUser;
+    environment.systemPackages = zcashPackages pkgs;
+    systemd.services.zcashd = services.zcashdService;
   };
 
   # The infrastructure node runs various "fixed overhead" services.  For
@@ -110,19 +43,15 @@ in
   # be made redundant somehow to ensure availability.
   infra =
   { lib, pkgs, ... }:
-  let zcash = pkgs.callPackage ./zcash/default.nix { };
-      s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
+  let s4signupwebsite = pkgs.callPackage ./s4signupwebsite.nix { };
       torControlPort = 9051;
       mainWebsiteProxyPort = 9061;
   in
   # Allow the two Zcash protocol ports.
-  { networking.firewall.allowedTCPPorts = [ 18232 18233 ];
-
-    users.users.zcash =
-    { isNormalUser = true;
-      home = "/var/lib/zcashd";
-      description = "Runs a full Zcash node";
-    };
+  { networking.firewall.allowedTCPPorts = zcashPorts;
+    users.users.zcash = zcashUser;
+    systemd.services.zcashd = services.zcashdService;
+    environment.systemPackages = zcashPackages pkgs;
 
     /*
      * Nix-generated Tor configuration file has a `User tor` that we cannot
@@ -142,75 +71,13 @@ in
      */
     users.users.tor.group = lib.mkForce "keys";
 
-    environment.systemPackages = [
-      zcash
-      # Provides flock, required by zcash-fetch-params.  Probably a Nix Zcash
-      # package bug that we have to specify it.
-      pkgs.utillinux
-      # Also required by zcash-fetch-params.
-      pkgs.wget
-    ];
-
-    systemd.services.zcashd = zcashdService pkgs zcash;
-
     /*
      * Run a Tor node so we can operate a hidden service to allow user signup.
      */
-    services.tor.enable = true;
+    services.tor = (tor.torService torControlPort);
 
-    /*
-     * Enable the control port so that we can do interesting things with the
-     * daemon from other programs.
-     */
-    services.tor.controlPort = torControlPort;
-
-    services.tor.extraConfig = ''
-      # Enable authentication on the ControlPort via a secret shared cookie.
-      CookieAuthentication 1
-
-      # Quoting https://gitweb.torproject.org/torspec.git/tree/control-spec.txt
-      #
-      # Tor instances can either be in anonymous hidden service mode, or
-      # non-anonymous single onion service mode. All hidden services on the
-      # same tor instance have the same anonymity. To guard against unexpected
-      # loss of anonymity, Tor checks that the ADD_ONION "NonAnonymous" flag
-      # matches the current hidden service anonymity mode. The hidden service
-      # anonymity mode is configured using the Tor options
-      # HiddenServiceSingleHopMode and HiddenServiceNonAnonymousMode. If both
-      # these options are 1, the "NonAnonymous" flag must be provided to
-      # ADD_ONION. If both these options are 0 (the Tor default), the flag
-      # must NOT be provided.
-      #
-      # Our purpose in using Tor is not to protect our location privacy
-      # ("anonymity") but to ensure that clients have their location privacy
-      # protected.  Therefore, we can drop the Tor behaviors which are for
-      # protecting our location privacy.  This should offer some amount of
-      # performance improvement as well due to the reduced number of hops to
-      # reach the service.
-      #
-      HiddenServiceSingleHopMode 1
-      HiddenServiceNonAnonymousMode 1
-
-      # We don't make outgoing Tor connections via the SOCKS proxy.  Disable
-      # it.  This is also necessary to use HiddenServiceNonAnonymousMode.
-      #
-      # NixOS Tor support defaults to disabling "client" features but there
-      # seems to be a bug where it leaves the Socks server enabled anyway.
-      SocksPort 0
-    '';
-
-    /*
-     * Customize the Tor service so that it is able to read the keys with which
-     * we will supply it.
-     */
-    systemd.services.tor =
-    { serviceConfig =
-      { ReadWritePaths =
-        [ # Let it keep track of its various internal state.
-          "/var/lib/tor"
-        ];
-      };
-    };
+    # Run the Tor daemon as a systemd service.
+    systemd.services.tor = services.torService;
 
     /* Provide a private key for the website Onion service. */
     /* https://elvishjerricco.github.io/2018/06/24/secure-declarative-key-management.html */
@@ -245,42 +112,18 @@ in
        '';
        description = "The S4 2.0 signup website.";
    in
-   txtorconService pkgs keyService script // { inherit description; };
+   services.txtorconService keyService script // { inherit description; };
 
     # Create a local-only nginx proxy server that will accept cleartext
-    # requests and proxy them to the HTTPS main website server.
-    services.nginx.enable = true;
-    services.nginx.appendConfig = ''
-      error_log logs/error.log debug;
-    '';
-
-    # Configure the Onion Service hostname as a virtual host on nginx which
-    # proxies to the main website.
-    services.nginx.virtualHosts =
-    { "leastauthority-main-website" =
-      { locations."/" =
-        { proxyPass = "https://leastauthority.com/";
-          extraConfig = ''
-            # The proxy upstream target only works with SNI.  Make sure that is on.
-            proxy_ssl_server_name on;
-            # # Regardless of the request host, this is what makes sense for upstream.
-            # proxy_set_header Host leastauthority.com;
-            proxy_ssl_name leastauthority.com;
-            # Verify the upstream target certificate!  This is not the default.
-            proxy_ssl_verify on;
-            # Point at a CA certificate bundle for certificate verification.
-            proxy_ssl_trusted_certificate ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt;
-            # nginx has a default verify depth of 1 instead of the more
-            # typical 9.  depth of 1 is too low to verify the
-            # leastauthority.com certificate.  raise the value back to
-            # something more sensible.
-            proxy_ssl_verify_depth 9;
-          '';
-        };
+    # requests (received via an Onion service, typically) and proxy them to
+    # the HTTPS main website server.
+    services.nginx = nginx.cleartextToHTTPSProxy
+      pkgs
+      "leastauthority-main-website"
+      { proxyPass = "https://leastauthority.com/";
         listen = [ { addr = "127.0.0.1"; port = mainWebsiteProxyPort; } ];
         serverName = "leastauthority.com";
       };
-    };
 
     # Create an Onion service that proxies cleartext connections to the local
     # cleartext nginx proxy server.
@@ -294,7 +137,7 @@ in
         '';
         description = "The overall Least Authority website with all content.";
     in
-    txtorconService pkgs keyService script // { inherit description; };
+    services.txtorconService keyService script // { inherit description; };
   };
 
 }
