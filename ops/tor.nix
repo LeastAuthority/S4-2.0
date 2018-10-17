@@ -6,12 +6,11 @@ rec {
   # Construct an extra Tor configuration blob to insert into the Tor
   # configuration file.
   extraConfig =
-  { cookieAuthentication, hiddenServiceSingleHopMode, hiddenServiceNonAnonymousMode, socksPort }:
+  { cookieAuthentication, hiddenServiceSingleHopMode, hiddenServiceNonAnonymousMode }:
   ''
   CookieAuthentication ${torBool cookieAuthentication}
   HiddenServiceSingleHopMode ${torBool hiddenServiceSingleHopMode}
   HiddenServiceNonAnonymousMode ${torBool hiddenServiceNonAnonymousMode}
-  SocksPort ${toString socksPort}
   '';
 
   torService = controlPort:
@@ -21,6 +20,22 @@ rec {
      * daemon from other programs.
      */
     inherit controlPort;
+
+    # We don't make outgoing Tor connections via the SOCKS proxy.  Disable
+    # this feature.  This is also required by HiddenServiceNonAnonymousMode.
+    #
+    # If we merely tell NixOS to disable the client entirely it won't write
+    # out the necessary `SocksPort` configuration item.  So spell out the
+    # exact configuration we need ourselves.
+    #
+    # See https://github.com/NixOS/nixpkgs/pull/48625
+    client =
+    { enable = true;
+      socksListenAddress = "0";
+      socksListenAddressFaster = "0";
+      socksIsolationOptions = [];
+    };
+
     extraConfig = extraConfig
     {
       # Enable authentication on the ControlPort via a secret shared cookie.
@@ -47,13 +62,6 @@ rec {
       # reach the service.
       hiddenServiceSingleHopMode = true;
       hiddenServiceNonAnonymousMode = true;
-
-      # We don't make outgoing Tor connections via the SOCKS proxy.  Disable
-      # it.  This is also necessary to use HiddenServiceNonAnonymousMode.
-      #
-      # NixOS Tor support defaults to disabling "client" features but there
-      # seems to be a bug where it leaves the Socks server enabled anyway.
-      socksPort = 0;
     };
   };
 }
