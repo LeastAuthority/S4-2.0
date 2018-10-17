@@ -1,5 +1,18 @@
 { pkgs, ... }:
 {
+  torService =
+  /*
+   * Customize the Tor service so that it is able to read the keys with which
+   * we will supply it.
+   */
+  { serviceConfig =
+    { ReadWritePaths =
+      [ # Let it keep track of its various internal state.
+        "/var/lib/tor"
+      ];
+    };
+  };
+
   txtorconService = keyService: script:
   { unitConfig.Documentation = "https://leastauthority.com/";
 

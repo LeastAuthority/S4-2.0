@@ -76,18 +76,8 @@ in
      */
     services.tor = (tor.torService torControlPort);
 
-    /*
-     * Customize the Tor service so that it is able to read the keys with which
-     * we will supply it.
-     */
-    systemd.services.tor =
-    { serviceConfig =
-      { ReadWritePaths =
-        [ # Let it keep track of its various internal state.
-          "/var/lib/tor"
-        ];
-      };
-    };
+    # Run the Tor daemon as a systemd service.
+    systemd.services.tor = services.torService;
 
     /* Provide a private key for the website Onion service. */
     /* https://elvishjerricco.github.io/2018/06/24/secure-declarative-key-management.html */
