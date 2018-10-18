@@ -102,8 +102,8 @@ startApp =
   case run 8080 <$> (app <$> NetworkWormholeClient <$> parseURI "ws://wormhole.leastauthority.com:4000/v1") of
     Nothing ->
       putStrLn "Failed to start application"
-    otherwise ->
-      return ()
+    Just it ->
+      it
 
 app :: WormholeClient c => c -> Application
 app wormholeClient = serve api (server wormholeClient)

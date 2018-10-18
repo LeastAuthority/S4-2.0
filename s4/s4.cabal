@@ -32,6 +32,7 @@ library
                      , network-uri
                      , spake2
                      , magic-wormhole
+                     , stm
   default-language:    Haskell2010
 
 executable s4-exe

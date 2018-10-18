@@ -43,7 +43,7 @@ data StubWormholeClient = StubWormholeClient WormholeCode
 
 instance WormholeClient StubWormholeClient where
   sendSubscription (StubWormholeClient code) subscription =
-    return $ Right (code, return ())
+    return $ Right (code, return $ Right ())
 
 spec :: Spec
 spec = with (return $ app $ StubWormholeClient "5-jumping-frogs") $ do
