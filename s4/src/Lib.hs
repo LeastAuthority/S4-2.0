@@ -6,7 +6,7 @@
 module Lib
   ( startApp
   , app
-  , CreateSubscriptionResult(WormholeInvitation)
+  , CreateSubscriptionResult(WormholeInvitation, InvalidPlanID)
   , CreateSubscription(CreateSubscriptionForPlan)
   ) where
 
@@ -17,6 +17,9 @@ import Wormhole
   , sendSubscription
   )
 
+import Control.Monad.Except
+  ( throwError
+  )
 import qualified Data.Map as Map
 import GHC.Generics
   ( Generic
@@ -28,9 +31,7 @@ import qualified Data.ByteString.Base64 as B64
 import Data.ByteString.Char8
   ( unpack
   )
-import Data.Aeson hiding
-  ( encode
-  )
+import Data.Aeson
 import Data.Aeson.TH
 import Data.Time
   ( UTCTime
@@ -58,6 +59,9 @@ import Network.URI
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
+import Servant.Server
+  ( err403
+  )
 
 import Model
   ( PlanID
@@ -123,11 +127,14 @@ plans :: Map.Map PlanID Plan
 plans = Map.fromList [("abcd", Plan "abcd" 3600)]
 
 createSubscription :: WormholeClient c => c -> CreateSubscription -> Handler CreateSubscriptionResult
-createSubscription wormholeClient (CreateSubscriptionForPlan id) = liftIO $
+createSubscription wormholeClient (CreateSubscriptionForPlan id) =
   case Map.lookup id plans of
     Nothing ->
-      return InvalidPlanID
-    Just plan -> do
+      throwError invalidPlanErr
+      where
+        invalidPlanErr :: ServantErr
+        invalidPlanErr = err403 { errBody = encode InvalidPlanID }
+    Just plan -> liftIO $ do
       subscription <- newSubscription plan
       openAttempt <- sendSubscription wormholeClient subscription
       case openAttempt of

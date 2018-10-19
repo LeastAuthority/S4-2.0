@@ -4,6 +4,10 @@
 module Wormhole
   ( WormholeClient
   , WormholeCode
+  , AbilitiesContainer(AbilitiesContainer)
+  , Abilities(Abilities)
+  , ClientV1(ClientV1)
+  , ServerV1(ServerV1)
   , NetworkWormholeClient(NetworkWormholeClient)
   , sendSubscription
   ) where
@@ -54,6 +58,7 @@ import Data.Aeson
   , withObject
   , defaultOptions
   , fieldLabelModifier
+  , omitNothingFields
   , camelTo2
   , genericToJSON
   , genericParseJSON
@@ -66,7 +71,9 @@ import Model
 -- A complete wormhole code including the nameplate and random words.
 type WormholeCode = Text
 
-type Error = String
+data Error =
+  UnparseableWebSocketEndpoint
+  deriving (Eq, Show)
 
 type WormholeSend = IO (Either Text ())
 
@@ -83,7 +90,7 @@ instance WormholeClient NetworkWormholeClient where
     let endpoint = uriToString id root ""
     case MagicWormhole.parseWebSocketEndpoint endpoint of
       Nothing ->
-        return $ Left "oops"
+        return $ Left UnparseableWebSocketEndpoint
       Just wsEndpoint -> do
         side <- MagicWormhole.generateSide
         MagicWormhole.runClient wsEndpoint appID side sendInvite
@@ -109,7 +116,7 @@ instance WormholeClient NetworkWormholeClient where
               sendJSON msg conn
               return $ Right ()
 
-        sendAbilities conn = sendJSON (Abilities ClientV1) conn
+        sendAbilities conn = sendJSON (AbilitiesContainer (Abilities Nothing (Just ServerV1))) conn
 
         sendConfig config conn = sendJSON conn
 
@@ -118,7 +125,7 @@ instance WormholeClient NetworkWormholeClient where
           (MagicWormhole.PlainText introText) <- atomically $ MagicWormhole.receiveMessage conn
           let introMessage = decode $ fromStrict introText
           case introMessage of
-            Just (Abilities ClientV1) ->
+            Just (AbilitiesContainer (Abilities (Just ClientV1) Nothing)) ->
               return encodeConfigV1
             otherwise ->
               return unsupportedConfig
@@ -137,7 +144,13 @@ newPassword = return "monkey-puppies"
 
 -- Aeson encoding options that turns camelCase into hyphenated-words.
 jsonOptions = defaultOptions
-  { fieldLabelModifier = camelTo2 '-'
+  { fieldLabelModifier =
+      let
+        fixUnderscores '_' = '-'
+        fixUnderscores c = c
+      in
+        (camelTo2 '-') . (map fixUnderscores)
+  , omitNothingFields = True
   }
 
 data ClientV1 = ClientV1 deriving (Eq, Show)
@@ -148,8 +161,27 @@ instance ToJSON ClientV1 where
 instance FromJSON ClientV1 where
   parseJSON anything = return ClientV1
 
+data ServerV1 = ServerV1 deriving (Eq, Show)
+
+instance ToJSON ServerV1 where
+  toJSON anything = object []
+
+instance FromJSON ServerV1 where
+  parseJSON anything = return ServerV1
+
+data AbilitiesContainer = AbilitiesContainer
+  { abilities :: Abilities
+  } deriving (Eq, Show, Generic)
+
+instance ToJSON AbilitiesContainer where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON AbilitiesContainer where
+  parseJSON = genericParseJSON jsonOptions
+
 data Abilities = Abilities
-  { clientV1 :: ClientV1
+  { client_v1 :: Maybe ClientV1
+  , server_v1 :: Maybe ServerV1
   } deriving (Eq, Show, Generic)
 
 instance ToJSON Abilities where
