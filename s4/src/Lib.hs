@@ -17,6 +17,10 @@ import Wormhole
   , sendSubscription
   )
 
+import Data.Time.Clock
+  ( getCurrentTime
+  )
+
 import Control.Monad.Except
   ( throwError
   )
@@ -27,31 +31,13 @@ import GHC.Generics
 import Control.Monad.IO.Class
   ( liftIO
   )
-import qualified Data.ByteString.Base64 as B64
 import Data.ByteString.Char8
   ( unpack
   )
 import Data.Aeson
 import Data.Aeson.TH
-import Data.Time
-  ( UTCTime
-  , NominalDiffTime
-  , addUTCTime
-  )
-import Data.Time.Clock
-  ( getCurrentTime
-  )
-import Crypto.Saltine.Core.Utils
-  ( randomByteString
-  )
 import Crypto.Saltine.Core.Hash
   ( hash
-  )
-import Crypto.Saltine.Core.Sign
-  ( Keypair
-  , SecretKey
-  , PublicKey
-  , newKeypair
   )
 import Network.URI
   ( parseURI
@@ -65,11 +51,17 @@ import Servant.Server
 
 import Model
   ( PlanID
+  , Plan(Plan)
+  , planID
+  , planInterval
   , SigningKey(SigningKey)
   , SubscriptionID
   , OnionKey
+  , Storage(Storage)
+  , Currency(ZEC)
   , PaymentStatus(PaymentStatus)
   , Subscription(Subscription)
+  , newSubscription
   )
 
 -- Aeson encoding options that turns camelCase into hyphenated-words.
@@ -118,13 +110,8 @@ api = Proxy
 server :: WormholeClient c => c -> Server API
 server wormholeClient = createSubscription wormholeClient
 
-data Plan = Plan
-  { planID       :: PlanID
-  , planInterval :: NominalDiffTime
-  } deriving (Eq, Show)
-
 plans :: Map.Map PlanID Plan
-plans = Map.fromList [("abcd", Plan "abcd" 3600)]
+plans = Map.fromList [("abcd", Plan "abcd" 3600 ZEC (read "0.2"))]
 
 createSubscription :: WormholeClient c => c -> CreateSubscription -> Handler CreateSubscriptionResult
 createSubscription wormholeClient (CreateSubscriptionForPlan id) =
@@ -135,32 +122,10 @@ createSubscription wormholeClient (CreateSubscriptionForPlan id) =
         invalidPlanErr :: ServantErr
         invalidPlanErr = err403 { errBody = encode InvalidPlanID }
     Just plan -> liftIO $ do
-      subscription <- newSubscription plan
+      subscription <- newSubscription getCurrentTime plan
       openAttempt <- sendSubscription wormholeClient subscription
       case openAttempt of
         Left err ->
           return WormholeOpenFailed
         Right (wormholeCode, send) ->
           return $ WormholeInvitation wormholeCode
-
-newSubscription :: Plan -> IO Subscription
-newSubscription plan = do
-  subscriptionID <- randomSubscriptionID
-  onionKey <- randomOnionKey
-  signingKey <- newSigningKey
-  now <- getCurrentTime
-  let paymentStatus = PaymentStatus [] 0 (nextDueDate now plan) signingKey
-  return $ Subscription subscriptionID (planID plan) onionKey paymentStatus
-
-newSigningKey :: IO SigningKey
-newSigningKey = newKeypair >>= return . SigningKey
-
-randomSubscriptionID :: IO SubscriptionID
-randomSubscriptionID = randomByteString 8 >>= return . B64.encode >>= return . unpack
-
--- XXX really generate a good tor key
-randomOnionKey :: IO OnionKey
-randomOnionKey = randomByteString 16 >>= return . unpack
-
-nextDueDate :: UTCTime -> Plan -> UTCTime
-nextDueDate from plan = addUTCTime (planInterval plan) from

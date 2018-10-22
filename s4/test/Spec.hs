@@ -1,5 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Main (main) where
 
 import Lib
@@ -7,6 +8,8 @@ import Lib
   , CreateSubscriptionResult(WormholeInvitation, InvalidPlanID)
   , CreateSubscription(CreateSubscriptionForPlan)
   )
+
+import qualified Invoice
 
 import Wormhole
   ( WormholeCode
@@ -20,7 +23,9 @@ import Wormhole
   )
 
 import Test.Hspec
-import Test.Hspec.Wai
+import Test.Hspec.Wai hiding
+  ( pending
+  )
 import Test.Hspec.Wai.Matcher
   ( bodyEquals
   )
@@ -30,15 +35,23 @@ import Network.Wai.Test
   )
 import Network.URI
   ( parseURI
+  , uriToString
   )
+
+import qualified Crypto.Saltine.Class as Saltine
 import Network.HTTP.Types
   ( Header,
     methodPost
   )
+import qualified Data.ByteString.Base64.URL as B64U
 import Data.ByteString
   ( ByteString
   )
 import qualified Data.ByteString.Lazy as LB
+import Data.ByteString.UTF8
+  ( toString
+  , fromString
+  )
 
 import Network.HTTP.Types.Status
   ( created201
@@ -46,6 +59,28 @@ import Network.HTTP.Types.Status
 import Data.Aeson
   ( decode
   , encode
+  )
+
+import Data.Time.Format
+  ( parseTimeM
+  , defaultTimeLocale
+  )
+
+import Data.URLEncoded
+  ( importString
+  , lookupAll
+  )
+
+import Model
+  ( Subscription
+  , Currency(ZEC)
+  , Plan(Plan)
+  , SigningKey(SigningKey)
+  , signingKey
+  , publicKey
+  , paymentStatus
+  , newSubscription
+  , nextInvoiceURL
   )
 
 main :: IO ()
@@ -110,7 +145,56 @@ wormholeSpec =
       (decode encodedForm :: Maybe AbilitiesContainer) `shouldBe` Just serverV1
 
 
+invoiceSpec :: Spec
+invoiceSpec =
+  let
+    plan = Plan "abcd" (25 * 3600) ZEC (read "0.1")
+    now = parseTimeM False defaultTimeLocale "%FT%T" "2018-10-30T14:30:45"
+    get' :: String -> Subscription -> [String]
+    get' field subscription =
+      let
+        encoded = Invoice.encode subscription
+        Just decoded = importString encoded
+      in
+        lookupAll field decoded
+    get field = do
+      subscription <- newSubscription now plan
+      return $ get' field subscription
+    shouldBe' = flip shouldBe
+  in
+    describe "serialization" $ do
+    it "v is version 1" $
+      get ("v" :: String) >>= (shouldBe' ["1"])
+    it "c specifies ZEC" $
+      get ("c" :: String) >>= (shouldBe' ["ZEC"])
+    it "a gives the amount" $
+      get ("a" :: String) >>= (shouldBe' ["0.1"])
+    it "d gives the due date" $
+      get ("d" :: String) >>= (shouldBe' ["2018-10-31T15:30:45"])
+    it "e gives the date the subscription is good for after the next payment" $
+      get ("e" :: String) >>= (shouldBe' ["2018-11-01T16:30:45"])
+    it "l is base64 encoded" $
+      get ("l" :: String) >>= (shouldBe' [toString $ B64U.encode "Least Authority S4 / P4"])
+    it "u is base64 encoded" $ do
+      subscription <- newSubscription now plan
+      let value = get' ("u" :: String) subscription
+      let decoded = map (B64U.decode . fromString) value
+      let expectedURL = nextInvoiceURL subscription
+      let expectedDecoded = fromString $ (uriToString id expectedURL) ""
+      decoded `shouldBe` [Right expectedDecoded]
+    it "r gives the credit" $
+      get "r" >>= (shouldBe' ["0.0"])
+    it "p gives the public key" $ do
+      subscription <- newSubscription now plan
+      let (SigningKey (secretKey, publicKey)) = signingKey . paymentStatus $ subscription
+      let actual = get' "p" subscription
+      [toString . B64U.encode . Saltine.encode $ publicKey] `shouldBe` actual
+    it "m gives the Tahoe-LAFS configuration" $
+      pending
+
+
 spec :: Spec
 spec = do
   apiSpec
   wormholeSpec
+  invoiceSpec
