@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 
 module Tahoe
-  ( Configuration
+  ( Configuration(storageFURLs, sharesNeeded, sharesTotal, sharesHappy, nickname)
   , fromSubscription
   ) where
 
@@ -22,7 +22,8 @@ import Data.Aeson
 
 import Model
   ( FURL
-  , Subscription
+  , Subscription(subscriptionStorage)
+  , Storage(frontendAddress)
   )
 
 type SharesNeeded = Integer
@@ -31,9 +32,25 @@ type SharesHappy = Integer
 type Nickname = Text
 
 data Configuration =
-  StorageServers [FURL] SharesNeeded SharesTotal SharesHappy Nickname
+  StorageServers
+  { storageFURLs   :: [FURL]
+  , sharesNeeded   :: SharesNeeded
+  , sharesTotal    :: SharesTotal
+  , sharesHappy    :: SharesHappy
+  , nickname       :: Nickname
+  }
   deriving (Eq, Show, Generic, ToJSON, FromJSON)
 
 fromSubscription :: Subscription -> Configuration
 fromSubscription subscription =
-  StorageServers [] 1 1 1 "you let me set your nickname"
+  let furls servers = do
+        server <- servers
+        return $ frontendAddress server
+  in
+    StorageServers
+    { storageFURLs = furls $ subscriptionStorage subscription
+    , sharesNeeded = 1
+    , sharesTotal = 1
+    , sharesHappy = 1
+    , nickname = "Least Authority S4 2.0"
+    }

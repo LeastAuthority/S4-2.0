@@ -12,14 +12,9 @@ module Model
   , SigningKey(SigningKey)
   , SubscriptionID
   , OnionKey
-  , Storage(Storage)
-  , PaymentStatus(PaymentStatus)
-  , dueDate
-  , Subscription(Subscription)
-  , subscriptionPlan
-  , creditAmount
-  , paymentStatus
-  , signingKey
+  , Storage(Storage, onionKey, frontendAddress, backendAddress)
+  , PaymentStatus(PaymentStatus, paymentAddresses, creditAmount, dueDate, signingKey)
+  , Subscription(Subscription, subscriptionID, subscriptionPlan, subscriptionStorage, paymentStatus)
   , secretKey
   , publicKey
   , newSubscription
@@ -125,10 +120,10 @@ type Address = (HostName, PortNumber)
 
 -- An accounting relationship with a single user of the service.
 data Subscription = Subscription
-  { id                 :: SubscriptionID -- Unique identifier for this subscription
-  , subscriptionPlan   :: Plan           -- The plan for this subscription
-  , storage            :: [Storage]      -- Information about Tahoe-LAFS storage servers for this subscription
-  , paymentStatus      :: PaymentStatus  -- The details about money for this subscription
+  { subscriptionID      :: SubscriptionID -- Unique identifier for this subscription
+  , subscriptionPlan    :: Plan           -- The plan for this subscription
+  , subscriptionStorage :: [Storage]      -- Information about Tahoe-LAFS storage servers for this subscription
+  , paymentStatus       :: PaymentStatus  -- The details about money for this subscription
   } deriving (Eq, Show)
 
 -- Current status with respect to payments and funding for a subscription.

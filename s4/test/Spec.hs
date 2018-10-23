@@ -72,15 +72,22 @@ import Data.URLEncoded
   )
 
 import Model
-  ( Subscription
-  , Currency(ZEC)
-  , Plan(Plan)
+  ( Currency(ZEC)
+  , Plan(..)
   , SigningKey(SigningKey)
+  , Storage(..)
+  , PaymentStatus(..)
+  , Subscription(..)
   , signingKey
   , publicKey
   , paymentStatus
   , newSubscription
   , nextInvoiceURL
+  )
+
+import Tahoe
+  ( Configuration(..)
+  , fromSubscription
   )
 
 main :: IO ()
@@ -189,12 +196,49 @@ invoiceSpec =
       let (SigningKey (secretKey, publicKey)) = signingKey . paymentStatus $ subscription
       let actual = get' "p" subscription
       [toString . B64U.encode . Saltine.encode $ publicKey] `shouldBe` actual
-    it "m gives the Tahoe-LAFS configuration" $
-      pending
+    it "m gives the Tahoe-LAFS configuration" $ do
+      subscription <- newSubscription now plan
+      let expectedConfig = fromSubscription subscription
+      let [actualConfig] = get' "m" subscription
+      (decode $ LB.fromStrict $ fromString actualConfig) `shouldBe` Just expectedConfig
 
+tahoeSpec :: Spec
+tahoeSpec =
+  let
+    Just now = parseTimeM False defaultTimeLocale "%FT%T" "2018-10-30T14:30:45"
+    plan = Plan
+      { planID = "1234"
+      , planInterval = 3600
+      , planCurrency = ZEC
+      , planPrice = fromRational 0.3
+      }
+    storage = Storage
+      { onionKey = "wxyz"
+      , frontendAddress = "pb://tubid@127.0.0.1:12345,10.0.0.1:54321/swissnum"
+      , backendAddress = ("127.0.0.2", 8000)
+      }
+    status = PaymentStatus
+      { paymentAddresses = []
+      , creditAmount = 0
+      , dueDate = now
+      , signingKey = undefined
+      }
+    subscription = Subscription
+      { subscriptionID = "abcd"
+      , subscriptionPlan = plan
+      , subscriptionStorage = [storage]
+      , paymentStatus = status
+      }
+  in
+    context "fromSubscription" $ do
+    it "computes storage servers" $ do
+      let config = fromSubscription subscription
+      let actualStorage = storageFURLs config
+      actualStorage `shouldBe` [frontendAddress storage]
 
 spec :: Spec
 spec = do
   apiSpec
+  tahoeSpec
   wormholeSpec
   invoiceSpec
