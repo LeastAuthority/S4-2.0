@@ -138,6 +138,15 @@ in
         description = "The overall Least Authority website with all content.";
     in
     services.txtorconService keyService script // { inherit description; };
+
+    systemd.services.s4 =
+    { unitConfig.Documentation = "https://github.com/leastauthority/s4-2.0";
+
+      # Get it to start as a part of the normal boot process.
+      wantedBy    = [ "multi-user.target" ];
+
+      script = "${pkgs.s4}/bin/s4-exe";
+    };
   };
 
 }

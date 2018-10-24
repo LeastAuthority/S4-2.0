@@ -30,4 +30,18 @@ rec {
   python3Packages = python3.pkgs;
 
   zcash = super.callPackage ./zcash/default.nix { };
+
+  haskell = super.haskell // {
+    packages = super.haskell.packages // {
+      ghc843 = super.haskell.packages.ghc843.override {
+        overrides = ghc-self: ghc-super: {
+          spake2 = super.haskellPackages.spake2.overrideAttrs (old: {
+            doCheck = false;
+          });
+        };
+      };
+    };
+  };
+
+  s4 = super.callPackage ../s4/default.nix { };
 }
