@@ -16,6 +16,14 @@ import GHC.Generics
   ( Generic
   )
 
+import System.Entropy
+  ( getEntropy
+  )
+
+import Data.Text.PgpWordlist
+  ( toText
+  )
+
 import Network.URI
   ( URI
   , uriToString
@@ -33,6 +41,7 @@ import Data.Text.Encoding
   , decodeUtf8
   )
 
+import qualified Data.Text as Text
 import Data.Text
   ( Text
   )
@@ -106,7 +115,7 @@ instance WormholeClient NetworkWormholeClient where
           peer <- MagicWormhole.open session mailbox  -- XXX: We should run `close` in the case of exceptions?
           password <- newPassword
           let (MagicWormhole.Nameplate n) = nameplate
-          let code = n <> "-" <> (decodeUtf8 password)
+          let code = n <> "-" <> password
           let spake2Password = Spake2.makePassword $ encodeUtf8 code
           let send = MagicWormhole.withEncryptedConnection peer spake2Password $ sendSubscr' subscription
           return $ Right (code, send)
@@ -144,8 +153,14 @@ encodeConfigV1 = Right . fromSubscription
 unsupportedConfig :: ToJSON o => a -> Either Text o
 unsupportedConfig anything = Left "blub blub"
 
-newPassword :: IO ByteString
-newPassword = return "monkey-puppies"
+newPassword :: IO Text
+newPassword =
+  let
+    fixSpace ' ' = '-'
+    fixSpace c = c
+    hyphenate = Text.map fixSpace
+  in
+    getEntropy 2 >>= return . hyphenate . toText . fromStrict
 
 -- Aeson encoding options that turns camelCase into hyphenated-words.
 jsonOptions = defaultOptions

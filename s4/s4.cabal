@@ -40,6 +40,8 @@ library
                      , urlencoded
                      , scientific
                      , utf8-string
+                     , pgp-wordlist
+                     , entropy
   default-language:    Haskell2010
 
 executable s4-exe
