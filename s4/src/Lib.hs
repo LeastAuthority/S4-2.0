@@ -21,6 +21,9 @@ import Data.Time.Clock
   ( getCurrentTime
   )
 
+import Control.Concurrent
+  ( forkIO
+  )
 import Control.Monad.Except
   ( throwError
   )
@@ -129,5 +132,8 @@ createSubscription wormholeClient (CreateSubscriptionForPlan id) =
       case openAttempt of
         Left err ->
           return WormholeOpenFailed
-        Right (wormholeCode, send) ->
+        Right (wormholeCode, send) -> do
+          putStrLn "Got wormhole code"
+          forkIO $ send >>= \x -> do
+            return ()
           return $ WormholeInvitation wormholeCode
