@@ -68,6 +68,11 @@ import Model
   ( Subscription
   )
 
+import Tahoe
+  ( Configuration
+  , fromSubscription
+  )
+
 -- A complete wormhole code including the nameplate and random words.
 type WormholeCode = Text
 
@@ -118,9 +123,7 @@ instance WormholeClient NetworkWormholeClient where
 
         sendAbilities conn = sendJSON (AbilitiesContainer (Abilities Nothing (Just ServerV1))) conn
 
-        sendConfig config conn = sendJSON conn
-
-        receiveAbilities :: MagicWormhole.EncryptedConnection -> IO (Subscription -> Either Text Object)
+        receiveAbilities :: MagicWormhole.EncryptedConnection -> IO (Subscription -> Either Text Configuration)
         receiveAbilities conn = do
           (MagicWormhole.PlainText introText) <- atomically $ MagicWormhole.receiveMessage conn
           let introMessage = decode $ fromStrict introText
@@ -130,13 +133,15 @@ instance WormholeClient NetworkWormholeClient where
             otherwise ->
               return unsupportedConfig
 
+        sendJSON :: ToJSON a => a -> MagicWormhole.EncryptedConnection -> IO ()
         sendJSON obj conn = do
           let msg = MagicWormhole.Message $ decodeUtf8 $ toStrict $ encode obj
           MagicWormhole.sendMessage conn (MagicWormhole.PlainText (toStrict $ encode msg))
 
+encodeConfigV1 :: Subscription -> Either Text Configuration
+encodeConfigV1 = Right . fromSubscription
 
-encodeConfigV1 subscription = Right mempty
-
+unsupportedConfig :: ToJSON o => a -> Either Text o
 unsupportedConfig anything = Left "blub blub"
 
 newPassword :: IO ByteString
@@ -189,8 +194,3 @@ instance ToJSON Abilities where
 
 instance FromJSON Abilities where
   parseJSON = genericParseJSON jsonOptions
-
-data Configuration =
-  ConfigurationV1
-  { introducerfURL :: Text
-  } deriving (Eq, Show)
