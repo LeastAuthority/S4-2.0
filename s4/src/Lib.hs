@@ -95,8 +95,10 @@ type API = "v1" :> "subscriptions" :> ReqBody '[JSON] CreateSubscription :> Post
 
 startApp :: IO ()
 startApp =
+  -- TODO: Command line option for listen address - including Tor support, probably.
   case run 8080 <$> (app <$> NetworkWormholeClient <$> parseURI "ws://wormhole.leastauthority.com:4000/v1") of
     Nothing ->
+      -- TODO: Reflect this in the exit status and try to report more information too.
       putStrLn "Failed to start application"
     Just it ->
       it
