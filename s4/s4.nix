@@ -10,6 +10,7 @@ mkDerivation {
   src = ./.;
   isLibrary = true;
   isExecutable = true;
+  doCheck = false;
   libraryHaskellDepends = [
     aeson base base64-bytestring bytestring containers magic-wormhole
     mtl network network-uri saltine scientific servant-server spake2
