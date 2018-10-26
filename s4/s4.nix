@@ -1,8 +1,9 @@
-{ mkDerivation, aeson, base, base64-bytestring, bytestring
+{ mkDerivation, aeson, async, base, base64-bytestring, bytestring
 , containers, entropy, hspec, hspec-wai, hspec-wai-json, http-types
-, magic-wormhole, mtl, network, network-uri, pgp-wordlist, saltine
-, scientific, servant-server, spake2, stdenv, stm, text, time
-, urlencoded, utf8-string, wai, wai-extra, warp
+, magic-wormhole, mtl, network, network-uri, pgp-wordlist
+, safe-exceptions, saltine, scientific, servant-server, spake2
+, stdenv, stm, text, time, urlencoded, utf8-string, wai, wai-extra
+, warp
 }:
 mkDerivation {
   pname = "s4";
@@ -10,14 +11,15 @@ mkDerivation {
   src = ./.;
   isLibrary = true;
   isExecutable = true;
-  doCheck = false;
   libraryHaskellDepends = [
-    aeson base base64-bytestring bytestring containers entropy
-    magic-wormhole mtl network network-uri pgp-wordlist saltine
-    scientific servant-server spake2 stm text time urlencoded
+    aeson async base base64-bytestring bytestring containers entropy
+    magic-wormhole mtl network network-uri pgp-wordlist safe-exceptions
+    saltine scientific servant-server spake2 stm text time urlencoded
     utf8-string wai warp
   ];
-  executableHaskellDepends = [ base ];
+  executableHaskellDepends = [
+    async base magic-wormhole safe-exceptions spake2 stm text
+  ];
   testHaskellDepends = [
     aeson base base64-bytestring bytestring hspec hspec-wai
     hspec-wai-json http-types network-uri saltine time urlencoded
