@@ -1,4 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveAnyClass   #-}
+{-# LANGUAGE DeriveGeneric   #-}
 
 module Model
   ( PlanID
@@ -21,6 +23,10 @@ module Model
   , nextDueDate
   , nextInvoiceURL
   ) where
+
+import GHC.Generics
+  ( Generic
+  )
 
 import qualified Data.ByteString.Base64 as B64
 
@@ -62,6 +68,10 @@ import Data.ByteString.Char8
 import Data.Time
   ( UTCTime
   , NominalDiffTime
+  )
+
+import Data.Aeson
+  ( ToJSON
   )
 
 import Crypto.Saltine.Core.Sign
@@ -106,14 +116,14 @@ data Storage = Storage
                                        -- location.
   } deriving (Eq, Show)
 
-data Currency = ZEC deriving (Eq, Show)
+data Currency = ZEC deriving (Eq, Show, Generic, ToJSON)
 
 data Plan = Plan
   { planID       :: PlanID
   , planInterval :: NominalDiffTime
   , planCurrency :: Currency
   , planPrice    :: Scientific
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic, ToJSON)
 
 type FURL = String
 type Address = (HostName, PortNumber)

@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators   #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module Lib
   ( startApp
@@ -10,6 +11,28 @@ module Lib
   , CreateSubscription(CreateSubscriptionForPlan)
   ) where
 
+import System.Entropy
+  ( getEntropy
+  )
+
+import Prelude hiding
+  ( head
+  )
+
+import Text.Printf
+  ( printf
+  )
+
+import Data.Char
+  ( ord
+  )
+
+import Data.Text.PgpWordlist
+  ( toText
+  )
+
+import qualified Wormhole
+
 import Wormhole
   ( WormholeClient
   , WormholeCode
@@ -17,12 +40,33 @@ import Wormhole
   , sendSubscription
   )
 
+import qualified Data.Text.IO as TextIO
+import qualified Data.Text as Text
+import Data.Text
+  ( Text
+  )
+
+import Data.ByteString.Lazy
+  ( toStrict
+  , fromStrict
+  )
+
+import Data.ByteString
+  ( head
+  )
+
 import Data.Time.Clock
   ( getCurrentTime
   )
 
-import Control.Concurrent
-  ( forkIO
+import Control.Exception.Safe
+  ( SomeException
+  , catchAny
+  )
+import Control.Concurrent.Async
+  ( Async
+  , async
+  , waitCatch
   )
 import Control.Monad.Except
   ( throwError
@@ -95,16 +139,23 @@ instance ToJSON CreateSubscriptionResult where
   toJSON = genericToJSON jsonOptions
 
 type API = "v1" :> "subscriptions" :> ReqBody '[JSON] CreateSubscription :> PostCreated '[JSON] CreateSubscriptionResult
+      :<|> "v1" :> "plans" :> Get '[JSON] [Plan]
 
 startApp :: IO ()
 startApp =
-  -- TODO: Command line option for listen address - including Tor support, probably.
-  case run 8080 <$> (app <$> NetworkWormholeClient <$> parseURI "ws://wormhole.leastauthority.com:4000/v1") of
-    Nothing ->
-      -- TODO: Reflect this in the exit status and try to report more information too.
-      putStrLn "Failed to start application"
-    Just it ->
-      it
+  let
+    -- TODO: Command line option for listen address - including Tor support, probably.
+    serverPort = 8080
+    -- wormholeMailboxURI = "ws://wormhole.leastauthority.com:4000/v1"
+    wormholeMailboxURI = "ws://localhost:4000/v1"
+  in
+    case run serverPort <$> (app <$> NetworkWormholeClient <$> parseURI wormholeMailboxURI) of
+      Nothing ->
+        -- TODO: Reflect this in the exit status and try to report more information too.
+        putStrLn "Failed to start application"
+      Just it -> do
+        putStrLn "Starting"
+        it
 
 app :: WormholeClient c => c -> Application
 app wormholeClient = serve api (server wormholeClient)
@@ -114,6 +165,7 @@ api = Proxy
 
 server :: WormholeClient c => c -> Server API
 server wormholeClient = createSubscription wormholeClient
+                   :<|> (return . Map.elems $ plans)
 
 plans :: Map.Map PlanID Plan
 plans = Map.fromList [("abcd", Plan "abcd" 3600 ZEC (read "0.2"))]
@@ -127,13 +179,42 @@ createSubscription wormholeClient (CreateSubscriptionForPlan id) =
         invalidPlanErr :: ServantErr
         invalidPlanErr = err403 { errBody = encode InvalidPlanID }
     Just plan -> liftIO $ do
+      let
+        handler :: Either Wormhole.Error () -> IO (Either Wormhole.Error ())
+        handler (Left e) = do
+          putStrLn $ "Sending configuration failed" <> show e
+          return $ Right ()
+        handler (Right ()) = do
+          putStrLn "Sending configuration succeeded"
+          return $ Right ()
+
       subscription <- newSubscription getCurrentTime plan
-      openAttempt <- sendSubscription wormholeClient subscription
-      case openAttempt of
-        Left err ->
-          return WormholeOpenFailed
-        Right (wormholeCode, send) -> do
-          putStrLn "Got wormhole code"
-          forkIO $ send >>= \x -> do
-            return ()
-          return $ WormholeInvitation wormholeCode
+      wormholeCode <- newWormholeCode
+      TextIO.putStrLn $ "Got wormhole code " <> wormholeCode
+      TextIO.putStrLn "Offering the configuration"
+      sending <- async $ sendSubscription wormholeClient wormholeCode subscription >>= handler
+      return $ WormholeInvitation wormholeCode
+
+newWormholeCode :: IO WormholeCode
+newWormholeCode = do
+  nameplate <- newNameplate
+  password <- newPassword
+  return $ nameplate <> "-" <> password
+
+newPassword :: IO Text
+newPassword =
+  let
+    fixSpace ' ' = '-'
+    fixSpace c = c
+    hyphenate = Text.map fixSpace
+  in
+    getEntropy 2 >>= return . hyphenate . toText . fromStrict
+
+newNameplate :: IO Text
+newNameplate = do
+  entropy <- getEntropy 1
+  let ch = head entropy
+  let i = toInteger ch
+  let n = i + 100
+  let s = show n
+  return $ Text.pack s

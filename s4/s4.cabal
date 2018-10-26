@@ -42,6 +42,8 @@ library
                      , utf8-string
                      , pgp-wordlist
                      , entropy
+                     , safe-exceptions
+                     , async
   default-language:    Haskell2010
 
 executable s4-exe

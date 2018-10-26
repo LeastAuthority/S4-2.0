@@ -93,14 +93,14 @@ import Tahoe
 main :: IO ()
 main = hspec spec
 
-data StubWormholeClient = StubWormholeClient WormholeCode
+data StubWormholeClient = StubWormholeClient
 
 instance WormholeClient StubWormholeClient where
-  sendSubscription (StubWormholeClient code) subscription =
-    return $ Right (code, return $ Right ())
+  sendSubscription StubWormholeClient code subscription =
+    return $ Right ()
 
 apiSpec :: Spec
-apiSpec = with (return $ app $ StubWormholeClient "5-jumping-frogs") $ do
+apiSpec = with (return $ app StubWormholeClient) $ do
   describe "POST /v1/subscriptions" $ do
     let requestBody = encode $ CreateSubscriptionForPlan "abcd"
     it "responds with `Created`" $ do

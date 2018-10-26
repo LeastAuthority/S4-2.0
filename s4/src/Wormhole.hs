@@ -2,7 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Wormhole
-  ( WormholeClient
+  ( Error(UnparseableWebSocketEndpoint)
+  , WormholeClient
   , WormholeCode
   , AbilitiesContainer(AbilitiesContainer)
   , Abilities(Abilities)
@@ -16,14 +17,6 @@ import GHC.Generics
   ( Generic
   )
 
-import System.Entropy
-  ( getEntropy
-  )
-
-import Data.Text.PgpWordlist
-  ( toText
-  )
-
 import Network.URI
   ( URI
   , uriToString
@@ -31,6 +24,10 @@ import Network.URI
 
 import qualified Crypto.Spake2 as Spake2
 import qualified MagicWormhole
+
+import Control.Exception.Safe
+  ( finally
+  )
 
 import Control.Monad.STM
   ( atomically
@@ -42,6 +39,7 @@ import Data.Text.Encoding
   )
 
 import qualified Data.Text as Text
+import qualified Data.Text.IO as TextIO
 import Data.Text
   ( Text
   )
@@ -74,7 +72,7 @@ import Data.Aeson
   )
 
 import Model
-  ( Subscription
+  ( Subscription(subscriptionID)
   )
 
 import Tahoe
@@ -92,14 +90,15 @@ data Error =
 type WormholeSend = IO (Either Text ())
 
 class WormholeClient c where
-  sendSubscription :: c -> Subscription -> IO (Either Error (WormholeCode, WormholeSend))
+  sendSubscription :: c -> WormholeCode -> Subscription -> IO (Either Error ())
 
 data NetworkWormholeClient =
   NetworkWormholeClient URI
   deriving (Eq, Show)
 
 instance WormholeClient NetworkWormholeClient where
-  sendSubscription (NetworkWormholeClient root) subscription = do
+  sendSubscription (NetworkWormholeClient root) code subscription = do
+    putStrLn $ "Sending " ++ (subscriptionID subscription)
     let appID = MagicWormhole.AppID "tahoe-lafs.org/invite"
     let endpoint = uriToString id root ""
     case MagicWormhole.parseWebSocketEndpoint endpoint of
@@ -107,26 +106,40 @@ instance WormholeClient NetworkWormholeClient where
         return $ Left UnparseableWebSocketEndpoint
       Just wsEndpoint -> do
         side <- MagicWormhole.generateSide
+        putStrLn $ show side
         MagicWormhole.runClient wsEndpoint appID side sendInvite
       where
         sendInvite session = do
-          nameplate <- MagicWormhole.allocate session
-          mailbox <- MagicWormhole.claim session nameplate
-          peer <- MagicWormhole.open session mailbox  -- XXX: We should run `close` in the case of exceptions?
-          password <- newPassword
-          let (MagicWormhole.Nameplate n) = nameplate
-          let code = n <> "-" <> password
+          let [nameplate, first, second] = Text.split (== '-') code
+          let password = first <> "-" <> second
           let spake2Password = Spake2.makePassword $ encodeUtf8 code
+
+          putStrLn "Claiming nameplate"
+          mailbox <- MagicWormhole.claim session (MagicWormhole.Nameplate nameplate)
+          putStrLn "Opening mailbox"
+          peer <- MagicWormhole.open session mailbox
+          putStrLn "Setting up encrypted connection handler"
           let send = MagicWormhole.withEncryptedConnection peer spake2Password $ sendSubscr' subscription
-          return $ Right (code, send)
+          putStrLn "Setting up final close"
+          let close = MagicWormhole.close session (Just mailbox) Nothing
+          putStrLn "Executing"
+          finally send close
+          return $ Right ()
 
         sendSubscr' subscription conn = do
+          putStrLn "Sending abilities"
           sendAbilities conn
+          putStrLn "Receiving abilities"
           encodeConfig <- receiveAbilities conn
+          putStrLn "Received abilities"
           let encoded = encodeConfig subscription
           case encoded of
-            Left err -> return $ Left err
+            Left err -> do
+              -- XXX This error does not seem to propagate correctly to the caller.
+              putStrLn $ "Error encoding subscription " <> (show err)
+              return $ Left err
             Right msg -> do
+              putStrLn "Sending configuration"
               sendJSON msg conn
               return $ Right ()
 
@@ -135,12 +148,25 @@ instance WormholeClient NetworkWormholeClient where
         receiveAbilities :: MagicWormhole.EncryptedConnection -> IO (Subscription -> Either Text Configuration)
         receiveAbilities conn = do
           (MagicWormhole.PlainText introText) <- atomically $ MagicWormhole.receiveMessage conn
+          putStrLn "Received raw abilities message"
+          TextIO.putStrLn $ (decodeUtf8 introText)
           let introMessage = decode $ fromStrict introText
           case introMessage of
-            Just (AbilitiesContainer (Abilities (Just ClientV1) Nothing)) ->
-              return encodeConfigV1
-            otherwise ->
+            Nothing -> do
+              putStrLn $ "Instead of Message, received something weird: " <> show introMessage
               return unsupportedConfig
+
+            Just (MagicWormhole.Message message) ->
+              let
+                abilitiesMessage = decode $ fromStrict (encodeUtf8 message)
+              in
+                case abilitiesMessage of
+                  Just (AbilitiesContainer (Abilities (Just ClientV1) Nothing)) -> do
+                    putStrLn "Received ClientV1 abilities"
+                    return encodeConfigV1
+                  otherwise -> do
+                    putStrLn $ "Instead of abilities, received something weird: " <> show message
+                    return unsupportedConfig
 
         sendJSON :: ToJSON a => a -> MagicWormhole.EncryptedConnection -> IO ()
         sendJSON obj conn = do
@@ -152,15 +178,6 @@ encodeConfigV1 = Right . fromSubscription
 
 unsupportedConfig :: ToJSON o => a -> Either Text o
 unsupportedConfig anything = Left "blub blub"
-
-newPassword :: IO Text
-newPassword =
-  let
-    fixSpace ' ' = '-'
-    fixSpace c = c
-    hyphenate = Text.map fixSpace
-  in
-    getEntropy 2 >>= return . hyphenate . toText . fromStrict
 
 -- Aeson encoding options that turns camelCase into hyphenated-words.
 jsonOptions = defaultOptions
