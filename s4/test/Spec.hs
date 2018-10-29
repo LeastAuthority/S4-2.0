@@ -105,7 +105,7 @@ apiSpec = with (return $ app StubWormholeClient (return "5-jumping-frogs")) $ do
     let requestBody = encode $ CreateSubscriptionForPlan "abcd"
     it "responds with `Created`" $ do
       postJSON "/v1/subscriptions" requestBody `shouldRespondWith` 201
-    it "responds with `Blubs`" $ do
+    it "responds with InvalidPlanIDs" $ do
       postJSON "/v1/subscriptions" (encode $ CreateSubscriptionForPlan "dcba") `shouldRespondWith` 403 { matchBody = bodyEquals $ encode InvalidPlanID }
     it "responds with application/json" $ do
       postJSON "/v1/subscriptions" requestBody `shouldRespondWith` 201
