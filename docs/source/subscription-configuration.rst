@@ -30,20 +30,42 @@ Clients and servers with such deviations *must* interoperate with peers that fol
 Therefore, clients and servers that follow this specifications *should* ignore any properties on these objects that they do not recognize.
 
 Once the server has received and recognized the client's negotiation message and determined compatibility,
-it will send the configuration message.
+it will send the subscription's first invoice.
 
-The client *must* only process the configuration message if it can determine compatibility given the server's first message.
+The client *must* only process the invoice message if it can determine compatibility given the server's first message.
+
+Invoice
+-------
+
+The invoice is a `BIP-72`_\ -inspired URI encoding payment *and* usage details for the subscription.
+The details of the invoice structured are `documented elsewhere <invoice.rst>`_.
+The **m**\ essage field of the invoice is used to carry the Tahoe-LAFS configuration.
+The message field is urlsafe-base64 encoded at the invoice layer.
+Decoding that content will produce the Tahoe-LAFS configuration.
+
+The invoice is delivered as a message following the server's negotiation message.
+It appears as follows::
+
+  { "message": { "invoice": "z..." } }
 
 Configuration
 -------------
 
-The configuration message which follows the server's negotiation message is as follows::
+The configuration message decoded from the invoice is a JSON-format data structure as follows::
 
-  { "sharesNeeded": 2
-  , "sharesHappy ": 3
-  , "sharesTotal": 5
-  , "storageFURLs": [ "pb://xxxx@yyyy.onion:12345/zzzz", ... ]
+  { "shares-needed": 2
+  , "shares-happy ": 3
+  , "shares-total": 5
   , "nickname": "Least Authority S4 2.0"
+  , "storage":
+    { "v0-aaaa":
+      { "anonymous-storage-FURL": "pb://mmmm@nnnn.onion:12345/oooo"
+      }
+    , "v0-bbbb":
+      { "anonymous-storage-FURL": "pb://pppp@qqqq.onion:12345/rrrr"
+      }
+    , ...
+    }
   }
 
 More formally (`JSON Schema`_)::
@@ -54,14 +76,21 @@ More formally (`JSON Schema`_)::
   , "description": "Tahoe-LAFS Configuration"
   , "type": "object"
   , "properties":
-    { "sharesNeeded": { "type": "integer" }
-    , "sharesHappy": { "type": "integer" }
-    , "sharesTotal": { "type": "integer" }
-    , "storageFURLs": { "type": "array", "items": { "type": "string" } }
+    { "shares-needed": { "type": "integer" }
+    , "shares-happy": { "type": "integer" }
+    , "shares-total": { "type": "integer" }
     , "nickname": { "type": "string" }
+    , "storage":
+      { "type": "object"
+      , "properties":
+	{ "anonymous-storage-FURL": { type": "string" }
+	}
+      , "required": [ "anonymous-storage-FURL" ]
+      }
     }
-  , "required": [ "sharesNeeded", "sharesHappy", "sharesTotal", "storageFURLs", "nickname" ]
+  , "required": [ "shares-needed", "shares-happy", "shares-total", "storage-FURLs", "nickname" ]
   }
 
 
 .. _JSON Schema: https://json-schema.org/
+.. _BIP-72: https://github.com/bitcoin/bips/blob/master/bip-0072.mediawiki
