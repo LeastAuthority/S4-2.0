@@ -88,7 +88,7 @@ More formally (`JSON Schema`_)::
       , "required": [ "anonymous-storage-FURL" ]
       }
     }
-  , "required": [ "shares-needed", "shares-happy", "shares-total", "storage-FURLs", "nickname" ]
+  , "required": [ "shares-needed", "shares-happy", "shares-total", "storage", "nickname" ]
   }
 
 
