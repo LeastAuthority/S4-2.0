@@ -102,3 +102,39 @@ encode subscription =
       signed = unsigned %& importList [(invoiceKey Signature, toString signature)]
   in
     export signed
+
+type Currency = Scientific
+type Signature = ByteString
+
+data Invoice =
+  InvoiceV1
+  { invoiceAmount :: Currency
+  , invoiceDueDate :: UTCTime
+  , invoiceExtensionDate :: UTCTime
+  , invoiceLabel :: Text
+  , invoiceNextURI ::  URI
+  , invoiceCredit :: Currency
+
+  -- This is the public part of the keypair which will sign the invoice that
+  -- follows this one.  This allows for key rotation on the service-provider
+  -- side should keys be compromised (or as a preventative measure to avoid
+  -- this).  Only the public part of this keypair is available here because
+  -- the private parts are restricted to storage and processing in a more
+  -- easily secured context (where fewer software components are involved, for
+  -- example).
+  , invoiceNextKey :: PublicKey
+
+  -- This is the signature of the serialized form of this very invoice.  It is
+  -- computed elsewhere and shipped here because we lack the secret key
+  -- necessary to compute it (by design).
+  , invoiceSignature :: Signature
+  }
+
+fromSubscription :: UTCTime -> Subscription -> Invoice
+fromSubscription now subscription =
+  let plan = subscriptionPlan subscription
+  in
+    InvoiceV1
+    { invoiceAmount = planPrice plan
+    , invoiceDueDate = nextDueDate now plan
+    , invoiceExtensionDate = nextExtensionDate now plan

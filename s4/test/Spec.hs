@@ -196,11 +196,11 @@ invoiceSpec =
       let (SigningKey (secretKey, publicKey)) = signingKey . paymentStatus $ subscription
       let actual = get' "p" subscription
       [toString . B64U.encode . Saltine.encode $ publicKey] `shouldBe` actual
-    it "m gives the Tahoe-LAFS configuration" $ do
+    it "m gives the invoice" $ do
       subscription <- newSubscription now plan
-      let expectedConfig = fromSubscription subscription
-      let [actualConfig] = get' "m" subscription
-      (decode $ LB.fromStrict $ fromString actualConfig) `shouldBe` Just expectedConfig
+      let expectedInvoice = fromSubscription subscription
+      let [actualInvoice] = get' "m" subscription
+      (decode $ LB.fromStrict $ fromString actualInvoice) `shouldBe` Just expectedInvoice
 
 tahoeSpec :: Spec
 tahoeSpec =
@@ -236,9 +236,20 @@ tahoeSpec =
       let actualStorage = storageFURLs config
       actualStorage `shouldBe` [frontendAddress storage]
 
+helperSpec :: Spec
+helperSpec =
+  context "nextDueDate" $ do
+  it "computes when payment is due" $ do
+    let Just now = parseTimeM False defaultTimeLocale "%FT%T" "2018-10-30T14:30:45"
+    let Just due = parseTimeM False defaultTimeLocale "%FT%T" "2018-10-30T15:31:46"
+    let Just ext = parseTimeM False defaultTimeLocale "%FT%T" "2018-10-30T16:32:47"
+    nextDueDate now plan `shouldBe` due
+    nextExtensionDate now plan `shouldBe` ext
+
 spec :: Spec
 spec = do
   apiSpec
   tahoeSpec
   wormholeSpec
   invoiceSpec
+  helperSpec

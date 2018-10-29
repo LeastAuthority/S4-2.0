@@ -146,8 +146,8 @@ startApp =
   let
     -- TODO: Command line option for listen address - including Tor support, probably.
     serverPort = 8080
-    -- wormholeMailboxURI = "ws://wormhole.leastauthority.com:4000/v1"
-    wormholeMailboxURI = "ws://localhost:4000/v1"
+    wormholeMailbox = "ws://wormhole.leastauthority.com:4000/v1"
+    -- wormholeMailboxURI = "ws://localhost:4000/v1"
     wormholeMailboxURI = parseURI wormholeMailbox
     wormholeClient = NetworkWormholeClient <$> wormholeMailboxURI
     subscriptionApp = app <$> wormholeClient <*> (Just newWormholeCode)

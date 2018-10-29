@@ -21,6 +21,7 @@ module Model
   , publicKey
   , newSubscription
   , nextDueDate
+  , nextExtensionDate
   , nextInvoiceURL
   ) where
 
@@ -179,6 +180,10 @@ randomOnionKey = randomByteString 16 >>= return . unpack
 
 nextDueDate :: UTCTime -> Plan -> UTCTime
 nextDueDate from plan = addUTCTime (planInterval plan) from
+
+nextExtensionDate :: UTCTime -> Plan -> UTCTime
+nextExtensionDate from plan =
+  nextDueDate (nextDueDate from plan) plan
 
 nextInvoiceURL :: Subscription -> URI
 nextInvoiceURL subscription = URI "http" (Just $ URIAuth "" "example.invalid" "") "/invoice.blub" "" ""
