@@ -148,30 +148,33 @@ startApp =
     serverPort = 8080
     -- wormholeMailboxURI = "ws://wormhole.leastauthority.com:4000/v1"
     wormholeMailboxURI = "ws://localhost:4000/v1"
+    wormholeMailboxURI = parseURI wormholeMailbox
+    wormholeClient = NetworkWormholeClient <$> wormholeMailboxURI
+    subscriptionApp = app <$> wormholeClient <*> (Just newWormholeCode)
   in
-    case run serverPort <$> (app <$> NetworkWormholeClient <$> parseURI wormholeMailboxURI) of
+    case subscriptionApp of
       Nothing ->
         -- TODO: Reflect this in the exit status and try to report more information too.
         putStrLn "Failed to start application"
-      Just it -> do
+      Just server -> do
         putStrLn "Starting"
-        it
+        run serverPort server
 
-app :: WormholeClient c => c -> Application
-app wormholeClient = serve api (server wormholeClient)
+app :: WormholeClient c => c -> IO WormholeCode -> Application
+app wormholeClient wormholeCodeGenerator = serve api (server wormholeClient wormholeCodeGenerator)
 
 api :: Proxy API
 api = Proxy
 
-server :: WormholeClient c => c -> Server API
-server wormholeClient = createSubscription wormholeClient
+server :: WormholeClient c => c -> IO WormholeCode -> Server API
+server wormholeClient wormholeCodeGenerator = createSubscription wormholeClient wormholeCodeGenerator
                    :<|> (return . Map.elems $ plans)
 
 plans :: Map.Map PlanID Plan
 plans = Map.fromList [("abcd", Plan "abcd" 3600 ZEC (read "0.2"))]
 
-createSubscription :: WormholeClient c => c -> CreateSubscription -> Handler CreateSubscriptionResult
-createSubscription wormholeClient (CreateSubscriptionForPlan id) =
+createSubscription :: WormholeClient c => c -> IO WormholeCode -> CreateSubscription -> Handler CreateSubscriptionResult
+createSubscription wormholeClient wormholeCodeGenerator (CreateSubscriptionForPlan id) =
   case Map.lookup id plans of
     Nothing ->
       throwError invalidPlanErr
@@ -189,7 +192,7 @@ createSubscription wormholeClient (CreateSubscriptionForPlan id) =
           return $ Right ()
 
       subscription <- newSubscription getCurrentTime plan
-      wormholeCode <- newWormholeCode
+      wormholeCode <- wormholeCodeGenerator
       TextIO.putStrLn $ "Got wormhole code " <> wormholeCode
       TextIO.putStrLn "Offering the configuration"
       sending <- async $ sendSubscription wormholeClient wormholeCode subscription >>= handler

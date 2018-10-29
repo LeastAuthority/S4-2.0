@@ -100,7 +100,7 @@ instance WormholeClient StubWormholeClient where
     return $ Right ()
 
 apiSpec :: Spec
-apiSpec = with (return $ app StubWormholeClient) $ do
+apiSpec = with (return $ app StubWormholeClient (return "5-jumping-frogs")) $ do
   describe "POST /v1/subscriptions" $ do
     let requestBody = encode $ CreateSubscriptionForPlan "abcd"
     it "responds with `Created`" $ do
