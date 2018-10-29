@@ -3,7 +3,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 
 module Tahoe
-  ( Configuration(storageFURLs, sharesNeeded, sharesTotal, sharesHappy, nickname)
+  ( Configuration(StorageServers, storageFURLs, sharesNeeded, sharesTotal, sharesHappy, nickname)
   , fromSubscription
   ) where
 
