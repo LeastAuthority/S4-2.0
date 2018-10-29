@@ -145,7 +145,17 @@ Meanwhile, you can generate some throw-away keys::
 
 You must have keys before you can use ``nixops`` to deploy the service.
 
+Magic Wormhole
+--------------
+
+When a new subscription is created,
+the associated Tahoe-LAFS configuration is transmitted using `Magic Wormhole`_.
+This process relies on a Magic Wormhole server which is not maintained here.
+
+See `subscription configuration <docs/source/subscription-configuration.rst>`_ for details of the configuration transmitted in this way.
+
 .. _NixOps: https://nixos.org/nixops/
 .. _NixOS: https://nixos.org/
 .. _Nix: https://nixos.org/nix/
 .. _Nixpkgs: https://nixos.org/nixpkgs/
+.. _Magic Wormhole: https://magic-wormhole.readthedocs.io/en/latest/
