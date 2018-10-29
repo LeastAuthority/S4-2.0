@@ -19,3 +19,8 @@ Key Required Value
  v    no     A version identifier. Assumed to be “1” if omitted.
  p    yes    The Ed25519 pubkey with which the next invoice will be signed, urlsafe-base64 encoded
  s    yes    The Ed25519 signature of the current invoice string.
+=== ======== =====
+
+The **v**\ ersion field is intended to specify interpretation rules for the invoice resource and the parameters.
+For example,
+if the urlsafe-base64 encoding rules change then they will do so along with a version increment.

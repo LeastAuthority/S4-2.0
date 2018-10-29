@@ -47,9 +47,13 @@ The invoice is delivered as a message following the server's negotiation message
 It appears as follows::
 
   { "version": 2
-  , "schema": "https://leastauthority.com/schemas/s4-invoice-2.0.schema.json"
+  , "schema": "https://leastauthority.com/schemas/s4-2.0.schema.json"
   , "invoice": "z..."
   }
+
+The ``version`` field is present to differentiate this message from the earlier exchange implemented by Tahoe-LAFS 1.13 for the ``tahoe invite`` and ``tahoe create-node --join`` UX.
+Version ``2`` here indicates there is a ``schema`` property which provides further interpretation information.
+The schema for this invoice message **and** for the Tahoe-LAFS configuration in the invoice is as given in the example above.
 
 Configuration
 -------------
