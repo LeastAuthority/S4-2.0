@@ -46,7 +46,10 @@ Decoding that content will produce the Tahoe-LAFS configuration.
 The invoice is delivered as a message following the server's negotiation message.
 It appears as follows::
 
-  { "message": { "invoice": "z..." } }
+  { "version": 2
+  , "schema": "https://leastauthority.com/schemas/s4-invoice-2.0.schema.json"
+  , "invoice": "z..."
+  }
 
 Configuration
 -------------
@@ -71,7 +74,7 @@ The configuration message decoded from the invoice is a JSON-format data structu
 More formally (`JSON Schema`_)::
 
   { "$schema": "http://json-schema.org/draft-07/schema#"
-  , "$id": "https://leastauthority.com/schemas/s4-2.0.schema.json"
+  , "$id": "https://leastauthority.com/schemas/s4-tahoe-config-2.0.schema.json"
   , "title": "Tahoe-LAFS Configuration"
   , "description": "Tahoe-LAFS Configuration"
   , "type": "object"
