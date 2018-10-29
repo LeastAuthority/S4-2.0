@@ -1,6 +1,8 @@
 module Main where
 
-import Lib
+import S4.Server
+  ( startServer
+  )
 
 main :: IO ()
-main = startApp
+main = startServer 8080
