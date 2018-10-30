@@ -1,0 +1,61 @@
+name:                s4
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/LeastAuthority/s4#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Least Authority TFA GmbH
+maintainer:          jean-paul@leastauthority.com
+copyright:           BSD3
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     S4.Server
+                     , S4.Plan
+                     , S4.Internal.Wormhole
+                     , S4.Internal.JSON
+                     , S4.Internal.API
+  build-depends:       base >= 4.7 && < 5
+                     , containers
+                     , network
+                     , aeson
+                     , servant-server
+                     , wai
+                     , warp
+                     , text
+                     , monad-extras
+  default-language:    Haskell2010
+
+executable s4-exe
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , s4
+  default-language:    Haskell2010
+
+test-suite s4-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , s4
+                     , hspec
+                     , hspec-wai
+                     , hspec-wai-json
+                     , wai-extra
+                     , aeson
+                     , http-types
+                     , text
+                     , bytestring
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/LeastAuthority/s4
