@@ -30,4 +30,6 @@ rec {
   python3Packages = python3.pkgs;
 
   zcash = super.callPackage ./zcash/default.nix { };
+
+  s4 = super.callPackage ../s4/default.nix { };
 }

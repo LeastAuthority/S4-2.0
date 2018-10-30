@@ -96,19 +96,26 @@ in
       permissions = "0600";
     };
 
-    /*
-     * Operate a static website allowing user signup, exposed via the Tor
-     * hidden service.
-     */
+    # Operate the subscription management service.
+    systemd.services.s4 =
+    { unitConfig.Documentation = "https://github.com/leastauthority/s4-2.0";
+
+      # Get it to start as a part of the normal boot process.
+      wantedBy    = [ "multi-user.target" ];
+
+      script = "${pkgs.s4}/bin/s4-exe";
+    };
+
+   # Expose the subscription management service via Tor.
    systemd.services."signup-website" =
    let keyService = "signup-website-tor-onion-service-v3.secret-key.service";
        # Run an Onion-to-HTTPS port forward to expose the website at an Onion
        # service address.
        script =
        ''
-       twist --log-format=text web \
-             --path ${s4signupwebsite} \
-             --port onion:public_port=80:controlPort=${toString torControlPort}:privateKeyFile=/run/keys/signup-website-tor-onion-service-v3.secret:singleHop=true
+       twist --log-format=text portforward \
+             --port onion:public_port=80:controlPort=${toString torControlPort}:privateKeyFile=/run/keys/signup-website-tor-onion-service-v3.secret:singleHop=true \
+             --dest_port 8080
        '';
        description = "The S4 2.0 signup website.";
    in
