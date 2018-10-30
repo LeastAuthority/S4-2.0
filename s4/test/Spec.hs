@@ -33,7 +33,7 @@ import S4.Internal.API
   , app
   )
 import S4.Internal.Wormhole
-  ( WormholeCode
+  ( WormholeCode(WormholeCode)
   )
 import S4.Plan (Plan)
 
@@ -70,13 +70,21 @@ spec = with (return app) $ do
         createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` 201
       it "responds with a Magic Wormhole invitation" $ do
         let
-          aWormholeInvitation :: [Header] -> Body -> Maybe String
-          aWormholeInvitation headers body =
+          -- TODO: Parameterize the code generator in the application
+          expected :: WormholeCode
+          expected = WormholeCode 101 ["monoidal", "endofunctors"]
+
+          aWormholeInvitation :: WormholeCode -> [Header] -> Body -> Maybe String
+          aWormholeInvitation expected headers body =
             case decode body :: Maybe CreateSubscriptionResult of
               Nothing ->
                 let textBody = decodeUtf8 $ toStrict body
                     stringBody = unpack textBody
                 in
                   Just ("Failed to deserialize body to WormholeCode: " <> stringBody)
-              otherwise -> Nothing
-        createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` matchIfBody 201 aWormholeInvitation
+              Just (WormholeInvitation actual) ->
+                if expected == actual then
+                  Nothing
+                else
+                  Just (show expected <> " != " <> show actual)
+        createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` matchIfBody 201 (aWormholeInvitation expected)
