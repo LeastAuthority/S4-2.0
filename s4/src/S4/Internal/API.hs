@@ -8,6 +8,8 @@
 -- Make string literals the right type
 {-# LANGUAGE OverloadedStrings #-}
 
+-- Implement the HTTP API for S4 subscription operations.
+
 module S4.Internal.API
   ( CreateSubscriptionResult(WormholeInvitation)
   , app
@@ -106,21 +108,28 @@ type API =
   :<|> "v1" :> "subscriptions" :> ReqBody '[JSON] CreateSubscription :> PostCreated '[JSON] CreateSubscriptionResult
 
 
-createSubscription :: CreateSubscription -> Handler CreateSubscriptionResult
+-- Attempt to create a new S4 subscription.
+createSubscription
+  :: CreateSubscription                 -- Parameters relating to the new subscription.
+  -> Handler CreateSubscriptionResult   -- Give back information describing the result of the attempt.
 createSubscription (CreateSubscriptionForPlan planID) = do
   let wormholeCode = WormholeCode 101 ["monoidal", "endofunctors"]
   case Map.lookup planID plans of
     Nothing ->
+      -- The requested plan is not one we know about.
       throwError invalidPlanErr
       where
         invalidPlanErr :: ServantErr
         invalidPlanErr = err403 { errBody = encode InvalidPlanID }
     otherwise ->
+      -- TODO Actually create a subscription and provision the resources it requires.
       return $ WormholeInvitation wormholeCode
 
+-- A bit of boilerplate required by Servant to glue things together.
 api :: Proxy API
 api = Proxy
 
+-- Another bit of Servant boilerplate.
 app :: Application
 app = serve api server
 

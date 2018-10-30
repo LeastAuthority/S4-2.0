@@ -19,6 +19,8 @@ import S4.Internal.API
   ( app
   )
 
--- Run a server for the API on the given port number.
-startServer :: Port -> IO ()
+-- Run a server for the API, indefinitely.
+startServer
+  :: Port      --  The TCP port number on which to listen for connections.
+  -> IO ()
 startServer portNumber = run portNumber app
