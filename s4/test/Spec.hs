@@ -2,6 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
+import Data.List
+  ( isInfixOf
+  )
 import Data.Text
   ( unpack
   )
@@ -13,6 +16,8 @@ import Data.ByteString.Lazy
   )
 import Data.Aeson
   ( decode
+  , encode
+  , eitherDecode
   )
 
 import Test.Hspec
@@ -41,7 +46,29 @@ main :: IO ()
 main = hspec spec
 
 spec :: Spec
-spec = with (return app) $ do
+spec = do
+  wormholeSpec
+  httpSpec
+
+wormholeSpec :: Spec
+wormholeSpec =
+  let
+    s = "\"101-monoidal-endofunctors\""
+    c = WormholeCode 101 ["monoidal", "endofunctors"]
+  in
+    describe "WormholeCode" $ do
+      it "is JSON encodable" $
+        encode c `shouldBe` s
+
+      it "is JSON decodeable" $
+        decode s `shouldBe` Just c
+
+      -- TODO Test more bad inputs
+      it "fails with a useful error" $
+        (eitherDecode "\"1\"" :: Either String WormholeCode) `shouldSatisfy` (\(Left err) -> "WormholeCode not parsed from 1" `isInfixOf` err)
+
+httpSpec :: Spec
+httpSpec = with (return app) $ do
   let
     matchIfBody status pred = status { matchBody = MatchBody pred }
 

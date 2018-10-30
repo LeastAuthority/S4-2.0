@@ -35,13 +35,16 @@ data WormholeCode =
   deriving (Eq, Show)
 
 instance ToJSON WormholeCode where
-  toJSON (WormholeCode nameplate passwords) = String $ pack (show nameplate) <> "-" <> (intercalate "-" passwords)
+  toJSON (WormholeCode nameplate passwords) =
+    String $ pack (show nameplate) <> "-" <> (intercalate "-" passwords)
 
 instance FromJSON WormholeCode where
   parseJSON = withText "WormholeCode" $ \s ->
     let
-      parse (nameplate:passwords) = return $ WormholeCode (read (unpack nameplate) :: Nameplate) passwords
-      parse otherwise = fail "glub"
+      parse (nameplate:first:second:[]) =
+        return $ WormholeCode (read (unpack nameplate) :: Nameplate) [first, second]
+      parse otherwise =
+        fail $ "WormholeCode not parsed from " <> unpack s
 
       parts :: [Text]
       parts = split ((==) '-') s
