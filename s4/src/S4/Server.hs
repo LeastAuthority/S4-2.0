@@ -20,8 +20,7 @@ import S4.Internal.Deployment
   )
 
 import S4.Internal.Wormhole
-  ( WormholeDelivery(WormholeDelivery)
-  , newWormholeCode
+  ( WormholeServer(WormholeServer)
   )
 
 import S4.Internal.API
@@ -34,6 +33,6 @@ startServer
   -> IO ()
 startServer portNumber =
   let
-    deployment = Deployment { wormholeDelivery = WormholeDelivery newWormholeCode }
+    deployment = Deployment { wormholeDelivery = WormholeServer }
   in
     run portNumber $ app deployment

@@ -6,9 +6,9 @@
 
 module S4.Internal.Wormhole
   ( WormholeCode(WormholeCode)
-  , WormholeDelivery(WormholeDelivery, wormholeCodeGenerator)
+  , WormholeDelivery(wormholeCodeGenerator, sendThroughWormhole)
+  , WormholeServer(WormholeServer)
   , newWormholeCode
-  , S4.Internal.Wormhole.deliverInvoice
   ) where
 
 import Prelude hiding
@@ -27,11 +27,6 @@ import Control.Monad.IO.Class
 import Control.Exception.Safe
   ( MonadThrow
   , throwM
-  )
-
-import Control.Concurrent.Async
-  ( Async
-  , async
   )
 
 import Data.Map
@@ -68,11 +63,6 @@ import Data.Text.PgpWordlist
 
 import System.Entropy
   ( getEntropy
-  )
-
-import S4.Internal.Invoice
-  ( Invoice
-  , deliverInvoice
   )
 
 -- A structured representation of a Magic Wormhole code.
@@ -134,27 +124,17 @@ newNameplate = do
   return n
 
 -- The ability to send an invoice through a Magic Wormhole.
-data WormholeDelivery = WormholeDelivery
-  { wormholeCodeGenerator :: IO WormholeCode
-  }
+class WormholeDelivery w where
+  wormholeCodeGenerator :: w -> IO WormholeCode
+  sendThroughWormhole   :: (MonadIO a, MonadThrow b) => w -> Text -> WormholeCode -> a (b ())
 
-deliverInvoice
-  :: (MonadIO a, MonadThrow b)
-  => WormholeDelivery
-  -> Invoice
-  -> a (b WormholeCode)
-deliverInvoice (WormholeDelivery wormholeCodeGen) invoice = liftIO $ do
-  wormholeCode <- wormholeCodeGen
-  async $ do
-      -- TODO Retry on errors where it makes sense - eg errors connecting to
-      -- the Magic Wormhole server.  Propagate other errors to the
-      -- subscription system, somehow, so the subscription associated with the
-      -- invoice is marked as garbage (if this first invoice is not delivered
-      -- then the legitimate owner of this subscription can never possibly use
-      -- it; they should just retry).
-    delivery <- S4.Internal.Invoice.deliverInvoice invoice wormholeCode
-    case delivery of
-      Left err -> throwM err
-      Right () -> return ()
+data WormholeServer = WormholeServer
 
-  return $ return wormholeCode
+instance WormholeDelivery WormholeServer where
+  wormholeCodeGenerator WormholeServer = newWormholeCode
+
+  -- Send an invoice along a Magic Wormhole.  Negotiate with the client first
+  -- to make sure they will understand what we're going to send.
+  -- TODO Really implement this
+  sendThroughWormhole WormholeServer text wormholeCode = do
+    return $ return ()

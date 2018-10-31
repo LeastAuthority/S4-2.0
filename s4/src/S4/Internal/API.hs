@@ -73,12 +73,15 @@ import S4.Internal.Deployment
 import S4.Internal.Wormhole
   ( WormholeDelivery
   , WormholeCode(WormholeCode)
-  , deliverInvoice
   )
 
 import S4.Internal.Subscription
   ( Subscription(Subscription)
   , nextInvoice
+  )
+
+import S4.Internal.Invoice
+  ( deliverInvoice
   )
 
 import S4.Plan
@@ -129,10 +132,11 @@ type API =
 
 -- Attempt to create a new S4 subscription.
 createSubscription
-  :: WormholeDelivery                   -- A simplified interface to invoice delivery via Magic Wormhole.
+  :: (WormholeDelivery w)
+  => w                                  -- A simplified interface to invoice delivery via Magic Wormhole.
   -> CreateSubscription                 -- Parameters relating to the new subscription.
   -> Handler CreateSubscriptionResult   -- Give back information describing the result of the attempt.
-createSubscription wormholeDelivery (CreateSubscriptionForPlan planID) =
+createSubscription wormhole (CreateSubscriptionForPlan planID) =
   case Map.lookup planID plans of
     Nothing ->
       -- The requested plan is not one we know about.
@@ -144,7 +148,7 @@ createSubscription wormholeDelivery (CreateSubscriptionForPlan planID) =
       -- TODO Actually persist the subscription and provision the resources it requires.
       let subscription = Subscription
       let invoice = nextInvoice subscription
-      wormholeCode <- deliverInvoice wormholeDelivery invoice
+      wormholeCode <- deliverInvoice wormhole invoice
       WormholeInvitation <$> wormholeCode
 
 -- A bit of boilerplate required by Servant to glue things together.
@@ -152,11 +156,11 @@ api :: Proxy API
 api = Proxy
 
 -- Another bit of Servant boilerplate.
-app :: Deployment -> Application
+app :: WormholeDelivery w => Deployment w -> Application
 app deployment = serve api (server deployment)
 
 -- Collect the pieces of the implementation of the API into a whole.
-server :: Deployment -> Server API
+server :: WormholeDelivery w => Deployment w -> Server API
 server deployment = listPlans
   :<|> createSubscription (wormholeDelivery deployment)
   where

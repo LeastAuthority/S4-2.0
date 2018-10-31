@@ -1,7 +1,14 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Main (main) where
 
+import Control.Exception.Safe
+  ( SomeException
+  , Exception
+  , throwM
+  )
 import Data.List
   ( isInfixOf
   )
@@ -29,6 +36,10 @@ import Network.HTTP.Types
   , methodPost
   )
 
+import Network.URI
+  ( uriToString
+  )
+
 import Network.Wai.Test
   ( SResponse(simpleBody)
   )
@@ -42,8 +53,14 @@ import S4.Internal.Deployment
   ( Deployment(Deployment, wormholeDelivery)
   )
 
+import S4.Internal.Invoice
+  ( Invoice(Invoice)
+  , toURI
+  )
+
 import S4.Internal.Wormhole
-  ( WormholeDelivery(WormholeDelivery, wormholeCodeGenerator)
+  ( WormholeDelivery(wormholeCodeGenerator, sendThroughWormhole)
+  , WormholeServer
   , WormholeCode(WormholeCode)
   , newWormholeCode
   )
@@ -57,6 +74,7 @@ spec :: Spec
 spec = do
   wormholeSpec
   httpSpec
+  invoiceSpec
 
 wormholeSpec :: Spec
 wormholeSpec =
@@ -88,20 +106,34 @@ wormholeSpec =
           nameplate `shouldSatisfy` (flip (>) 0)
 
 
+data FakeWormhole = FakeWormhole WormholeCode
+
+instance WormholeDelivery FakeWormhole where
+  wormholeCodeGenerator (FakeWormhole code) = return code
+
+  sendThroughWormhole (FakeWormhole expectedCode) text wormholeCode =
+    if expectedCode == wormholeCode then
+      return $ return ()
+    else
+      return $ throwM WrongWormholeCode
+
+data WrongWormholeCode = WrongWormholeCode deriving (Eq, Show, Exception)
+
 -- Spec for the HTTP API
 httpSpec :: Spec
 httpSpec =
   let
     wormholeCode = WormholeCode 101 ["monoidal", "endofunctors"]
-    deployment = Deployment { wormholeDelivery = WormholeDelivery $ return wormholeCode }
+    deployment = Deployment { wormholeDelivery = FakeWormhole wormholeCode }
   in
     httpSpec' wormholeCode deployment
 
 -- Helper to actually generate the spec.
 httpSpec'
-  :: WormholeCode -- The constant code that can be expected using the given
-                  -- deployment.
-  -> Deployment   -- The Deployment to use to construct the server.
+  :: WormholeDelivery w
+  => WormholeCode  -- The constant code that can be expected using the given
+                   -- deployment.
+  -> Deployment w  -- The Deployment to use to construct the server.
   -> Spec
 httpSpec' wormholeCode deployment = with (return $ app deployment) $ do
   let
@@ -146,3 +178,14 @@ httpSpec' wormholeCode deployment = with (return $ app deployment) $ do
                 else
                   Just (show expected <> " != " <> show actual)
         createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` matchIfBody 201 (aWormholeInvitation wormholeCode)
+
+-- Spec for invoices
+invoiceSpec :: Spec
+invoiceSpec = do
+  describe "toURI" $ do
+    it "returns empty URI" $ do
+      (uriToString id $ toURI Invoice) "" `shouldBe` ""
+
+  describe "deliverInvoice" $ do
+    it "does stuff" $ do
+      1 `shouldBe` 1
