@@ -39,6 +39,7 @@ import S4.Internal.API
   )
 import S4.Internal.Wormhole
   ( WormholeCode(WormholeCode)
+  , newWormholeCode
   )
 import S4.Plan (Plan)
 
@@ -66,6 +67,19 @@ wormholeSpec =
       -- TODO Test more bad inputs
       it "fails with a useful error" $
         (eitherDecode "\"1\"" :: Either String WormholeCode) `shouldSatisfy` (\(Left err) -> "WormholeCode not parsed from 1" `isInfixOf` err)
+
+      it "shows usefully" $
+        show c `shouldBe` "101-monoidal-endofunctors"
+
+      context "generation" $ do
+        it "generates two-word codes" $ do
+          WormholeCode nameplate password <- newWormholeCode
+          length password `shouldBe` 2
+
+        it "generates positive integer nameplates" $ do
+          WormholeCode nameplate password <- newWormholeCode
+          nameplate `shouldSatisfy` (flip (>) 0)
+
 
 httpSpec :: Spec
 httpSpec = with (return app) $ do

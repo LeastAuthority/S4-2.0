@@ -6,7 +6,12 @@
 
 module S4.Internal.Wormhole
   ( WormholeCode(WormholeCode)
+  , newWormholeCode
   ) where
+
+import Prelude hiding
+  ( head
+  )
 
 import Control.Monad
   ( fail
@@ -19,6 +24,15 @@ import Data.Text
   , unpack
   , split
   )
+import qualified Data.Text as Text
+
+import Data.ByteString
+  ( head
+  )
+
+import Data.ByteString.Lazy
+  ( fromStrict
+  )
 
 import Data.Aeson
   ( ToJSON(toJSON)
@@ -27,12 +41,23 @@ import Data.Aeson
   , withText
   )
 
+import Data.Text.PgpWordlist
+  ( toText
+  )
+
+import System.Entropy
+  ( getEntropy
+  )
+
 -- A structured representation of a Magic Wormhole code.
 data WormholeCode =
 -- The default number of passwords is two though Magic Wormhole allows this to
 -- be configured on a per-wormhole basis.
   WormholeCode Nameplate [Password]
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show WormholeCode where
+  show (WormholeCode nameplate password) = show nameplate <> "-" <> (unpack (intercalate "-" password))
 
 -- Components of the code which is serialized like <nameplate>-<password>-<password>.
 type Nameplate = Integer
@@ -58,3 +83,26 @@ instance FromJSON WormholeCode where
       parts = split ((==) '-') s
     in
         parse parts
+
+-- Generate a new, random wormhole code.  There is no guarantee of nameplate
+-- non-collision.
+newWormholeCode :: IO WormholeCode
+newWormholeCode = do
+  nameplate <- newNameplate
+  password <- newPassword 2
+  return $ WormholeCode nameplate password
+
+-- Generate a new, random password for a wormhole code.
+newPassword :: Int -> IO [Text]
+newPassword words =
+  getEntropy words >>= return . split ((==) ' ') . toText . fromStrict
+
+-- Generate a new, random nameplate for a wormhole code.  There is no
+-- guarantee of non-collision.
+newNameplate :: IO Integer
+newNameplate = do
+  entropy <- getEntropy 1
+  let ch = head entropy
+  let i = toInteger ch
+  let n = i + 100
+  return n
