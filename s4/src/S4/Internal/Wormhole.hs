@@ -6,7 +6,9 @@
 
 module S4.Internal.Wormhole
   ( WormholeCode(WormholeCode)
+  , WormholeDelivery(WormholeDelivery, wormholeCodeGenerator)
   , newWormholeCode
+  , S4.Internal.Wormhole.deliverInvoice
   ) where
 
 import Prelude hiding
@@ -15,6 +17,24 @@ import Prelude hiding
 
 import Control.Monad
   ( fail
+  )
+
+import Control.Monad.IO.Class
+  ( MonadIO
+  , liftIO
+  )
+
+import Control.Exception.Safe
+  ( MonadThrow
+  )
+
+import Control.Concurrent.Async
+  ( Async
+  , async
+  )
+
+import Data.Map
+  ( Map
   )
 
 import Data.Text
@@ -47,6 +67,11 @@ import Data.Text.PgpWordlist
 
 import System.Entropy
   ( getEntropy
+  )
+
+import S4.Internal.Invoice
+  ( Invoice
+  , deliverInvoice
   )
 
 -- A structured representation of a Magic Wormhole code.
@@ -106,3 +131,23 @@ newNameplate = do
   let i = toInteger ch
   let n = i + 100
   return n
+
+-- The ability to send an invoice through a Magic Wormhole.
+data WormholeDelivery = WormholeDelivery
+  { wormholeCodeGenerator :: IO WormholeCode
+  }
+
+deliverInvoice
+  :: (MonadIO a, MonadThrow b)
+  => WormholeDelivery
+  -> Invoice
+  -> a (b WormholeCode)
+deliverInvoice (WormholeDelivery wormholeCodeGen) invoice = liftIO $ do
+  wormholeCode <- wormholeCodeGen
+  async $ do
+    delivery <- S4.Internal.Invoice.deliverInvoice invoice wormholeCode
+    case delivery of
+      Left err -> putStrLn $ show err
+      Right () -> return ()
+
+  return $ return wormholeCode

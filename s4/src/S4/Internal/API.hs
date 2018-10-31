@@ -31,11 +31,6 @@ import Control.Exception.Safe
   ( SomeException
   )
 
-import Control.Concurrent.Async
-  ( Async
-  , async
-  )
-
 import qualified Data.Map as Map
 
 import Data.Aeson
@@ -71,18 +66,19 @@ import S4.Internal.JSON
   ( jsonOptions
   )
 
+import S4.Internal.Deployment
+  ( Deployment(wormholeDelivery)
+  )
+
 import S4.Internal.Wormhole
-  ( WormholeCode(WormholeCode)
+  ( WormholeDelivery
+  , WormholeCode(WormholeCode)
+  , deliverInvoice
   )
 
-import S4.Internal.Model
-  ( Deployment(wormholeCodeGenerator)
-  , Subscription(Subscription)
+import S4.Internal.Subscription
+  ( Subscription(Subscription)
   , nextInvoice
-  )
-
-import S4.Internal.Invoice
-  ( deliverInvoice
   )
 
 import S4.Plan
@@ -133,10 +129,10 @@ type API =
 
 -- Attempt to create a new S4 subscription.
 createSubscription
-  :: IO WormholeCode                    -- A generator for a wormhole code to use with the new subscription.
+  :: WormholeDelivery                   -- A simplified interface to invoice delivery via Magic Wormhole.
   -> CreateSubscription                 -- Parameters relating to the new subscription.
   -> Handler CreateSubscriptionResult   -- Give back information describing the result of the attempt.
-createSubscription wormholeCodeGen (CreateSubscriptionForPlan planID) =
+createSubscription wormholeDelivery (CreateSubscriptionForPlan planID) =
   case Map.lookup planID plans of
     Nothing ->
       -- The requested plan is not one we know about.
@@ -144,13 +140,12 @@ createSubscription wormholeCodeGen (CreateSubscriptionForPlan planID) =
       where
         invalidPlanErr :: ServantErr
         invalidPlanErr = err403 { errBody = encode InvalidPlanID }
-    otherwise -> liftIO $ do
+    otherwise -> do
       -- TODO Actually persist the subscription and provision the resources it requires.
       let subscription = Subscription
       let invoice = nextInvoice subscription
-      wormholeCode <- wormholeCodeGen
-      sending <- async $ deliverInvoice invoice wormholeCode :: IO (Async (Handler ()))
-      return $ WormholeInvitation wormholeCode
+      wormholeCode <- deliverInvoice wormholeDelivery invoice
+      WormholeInvitation <$> wormholeCode
 
 -- A bit of boilerplate required by Servant to glue things together.
 api :: Proxy API
@@ -163,7 +158,7 @@ app deployment = serve api (server deployment)
 -- Collect the pieces of the implementation of the API into a whole.
 server :: Deployment -> Server API
 server deployment = listPlans
-  :<|> createSubscription (wormholeCodeGenerator deployment)
+  :<|> createSubscription (wormholeDelivery deployment)
   where
     listPlans :: Handler [Plan]
     listPlans = return . Map.elems $ plans

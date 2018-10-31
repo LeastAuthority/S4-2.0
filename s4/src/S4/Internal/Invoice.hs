@@ -1,5 +1,6 @@
 module S4.Internal.Invoice
-  ( deliverInvoice
+  ( Invoice(Invoice)
+  , deliverInvoice
   ) where
 
 import Control.Monad.IO.Class
@@ -12,9 +13,9 @@ import Control.Exception.Safe
   , throwString
   )
 
-import S4.Internal.Model
-  ( Invoice
-  )
+-- All of the details of a single payment that is required to maintain a
+-- subscription in good standing.
+data Invoice = Invoice
 
 -- Send an invoice along a Magic Wormhole.
 -- TODO Really implement this

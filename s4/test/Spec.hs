@@ -37,13 +37,17 @@ import S4.Internal.API
   ( CreateSubscriptionResult(WormholeInvitation)
   , app
   )
+
+import S4.Internal.Deployment
+  ( Deployment(Deployment, wormholeDelivery)
+  )
+
 import S4.Internal.Wormhole
-  ( WormholeCode(WormholeCode)
+  ( WormholeDelivery(WormholeDelivery, wormholeCodeGenerator)
+  , WormholeCode(WormholeCode)
   , newWormholeCode
   )
-import S4.Internal.Model
-  ( Deployment(Deployment, wormholeCodeGenerator)
-  )
+
 import S4.Plan (Plan)
 
 main :: IO ()
@@ -89,7 +93,7 @@ httpSpec :: Spec
 httpSpec =
   let
     wormholeCode = WormholeCode 101 ["monoidal", "endofunctors"]
-    deployment = Deployment { wormholeCodeGenerator = return wormholeCode }
+    deployment = Deployment { wormholeDelivery = WormholeDelivery $ return wormholeCode }
   in
     httpSpec' wormholeCode deployment
 

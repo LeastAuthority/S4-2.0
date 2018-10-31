@@ -15,12 +15,13 @@ import Network.Wai.Handler.Warp
   , run
   )
 
-import S4.Internal.Model
-  ( Deployment(Deployment, wormholeCodeGenerator)
+import S4.Internal.Deployment
+  ( Deployment(Deployment, wormholeDelivery)
   )
 
 import S4.Internal.Wormhole
-  ( newWormholeCode
+  ( WormholeDelivery(WormholeDelivery)
+  , newWormholeCode
   )
 
 import S4.Internal.API
@@ -33,6 +34,6 @@ startServer
   -> IO ()
 startServer portNumber =
   let
-    deployment = Deployment { wormholeCodeGenerator = newWormholeCode }
+    deployment = Deployment { wormholeDelivery = WormholeDelivery newWormholeCode }
   in
     run portNumber $ app deployment
