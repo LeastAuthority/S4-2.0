@@ -94,6 +94,18 @@ Where we have needs that go beyond Nixpkgs we can use Nix to create our own pack
 Components
 ~~~~~~~~~~
 
+"S4"
+----
+
+This needs a better name.
+A single long-running process controls and coordinates the other components involved in delivering the service.
+This process responds to HTTP requests for new subscriptions.
+It will eventually
+communicate subscription details using Magic Wormhole,
+manage persistent state relating to subscriptions,
+integrate Zcash transactions with subscription state,
+and create and destroy Tor Onion Services.
+
 Zcash
 -----
 
