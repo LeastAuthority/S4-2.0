@@ -26,6 +26,7 @@ import Control.Monad.IO.Class
 
 import Control.Exception.Safe
   ( MonadThrow
+  , throwM
   )
 
 import Control.Concurrent.Async
@@ -145,9 +146,15 @@ deliverInvoice
 deliverInvoice (WormholeDelivery wormholeCodeGen) invoice = liftIO $ do
   wormholeCode <- wormholeCodeGen
   async $ do
+      -- TODO Retry on errors where it makes sense - eg errors connecting to
+      -- the Magic Wormhole server.  Propagate other errors to the
+      -- subscription system, somehow, so the subscription associated with the
+      -- invoice is marked as garbage (if this first invoice is not delivered
+      -- then the legitimate owner of this subscription can never possibly use
+      -- it; they should just retry).
     delivery <- S4.Internal.Invoice.deliverInvoice invoice wormholeCode
     case delivery of
-      Left err -> putStrLn $ show err
+      Left err -> throwM err
       Right () -> return ()
 
   return $ return wormholeCode
