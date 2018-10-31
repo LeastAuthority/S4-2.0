@@ -21,6 +21,7 @@ library
                      , S4.Internal.JSON
                      , S4.Internal.API
                      , S4.Internal.Model
+                     , S4.Internal.Invoice
   build-depends:       base >= 4.7 && < 5
                      , containers
                      , network
@@ -33,6 +34,8 @@ library
                      , monad-extras
                      , entropy
                      , pgp-wordlist
+                     , safe-exceptions
+                     , async
   default-language:    Haskell2010
 
 executable s4-exe

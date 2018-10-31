@@ -27,6 +27,15 @@ import Control.Monad.Extra
   ( liftMaybe
   )
 
+import Control.Exception.Safe
+  ( SomeException
+  )
+
+import Control.Concurrent.Async
+  ( Async
+  , async
+  )
+
 import qualified Data.Map as Map
 
 import Data.Aeson
@@ -68,6 +77,12 @@ import S4.Internal.Wormhole
 
 import S4.Internal.Model
   ( Deployment(wormholeCodeGenerator)
+  , Subscription(Subscription)
+  , nextInvoice
+  )
+
+import S4.Internal.Invoice
+  ( deliverInvoice
   )
 
 import S4.Plan
@@ -121,8 +136,7 @@ createSubscription
   :: IO WormholeCode                    -- A generator for a wormhole code to use with the new subscription.
   -> CreateSubscription                 -- Parameters relating to the new subscription.
   -> Handler CreateSubscriptionResult   -- Give back information describing the result of the attempt.
-createSubscription wormholeCodeGen (CreateSubscriptionForPlan planID) = do
-  wormholeCode <- liftIO wormholeCodeGen
+createSubscription wormholeCodeGen (CreateSubscriptionForPlan planID) =
   case Map.lookup planID plans of
     Nothing ->
       -- The requested plan is not one we know about.
@@ -130,8 +144,12 @@ createSubscription wormholeCodeGen (CreateSubscriptionForPlan planID) = do
       where
         invalidPlanErr :: ServantErr
         invalidPlanErr = err403 { errBody = encode InvalidPlanID }
-    otherwise ->
-      -- TODO Actually create a subscription and provision the resources it requires.
+    otherwise -> liftIO $ do
+      -- TODO Actually persist the subscription and provision the resources it requires.
+      let subscription = Subscription
+      let invoice = nextInvoice subscription
+      wormholeCode <- wormholeCodeGen
+      sending <- async $ deliverInvoice invoice wormholeCode :: IO (Async (Handler ()))
       return $ WormholeInvitation wormholeCode
 
 -- A bit of boilerplate required by Servant to glue things together.
