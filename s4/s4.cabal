@@ -20,6 +20,7 @@ library
                      , S4.Internal.Wormhole
                      , S4.Internal.JSON
                      , S4.Internal.API
+                     , S4.Internal.Model
   build-depends:       base >= 4.7 && < 5
                      , containers
                      , network

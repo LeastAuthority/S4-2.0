@@ -41,6 +41,9 @@ import S4.Internal.Wormhole
   ( WormholeCode(WormholeCode)
   , newWormholeCode
   )
+import S4.Internal.Model
+  ( Deployment(Deployment, wormholeCodeGenerator)
+  )
 import S4.Plan (Plan)
 
 main :: IO ()
@@ -81,8 +84,22 @@ wormholeSpec =
           nameplate `shouldSatisfy` (flip (>) 0)
 
 
+-- Spec for the HTTP API
 httpSpec :: Spec
-httpSpec = with (return app) $ do
+httpSpec =
+  let
+    wormholeCode = WormholeCode 101 ["monoidal", "endofunctors"]
+    deployment = Deployment { wormholeCodeGenerator = return wormholeCode }
+  in
+    httpSpec' wormholeCode deployment
+
+-- Helper to actually generate the spec.
+httpSpec'
+  :: WormholeCode -- The constant code that can be expected using the given
+                  -- deployment.
+  -> Deployment   -- The Deployment to use to construct the server.
+  -> Spec
+httpSpec' wormholeCode deployment = with (return $ app deployment) $ do
   let
     matchIfBody status pred = status { matchBody = MatchBody pred }
 
@@ -111,10 +128,6 @@ httpSpec = with (return app) $ do
         createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` 201
       it "responds with a Magic Wormhole invitation" $ do
         let
-          -- TODO: Parameterize the code generator in the application
-          expected :: WormholeCode
-          expected = WormholeCode 101 ["monoidal", "endofunctors"]
-
           aWormholeInvitation :: WormholeCode -> [Header] -> Body -> Maybe String
           aWormholeInvitation expected headers body =
             case decode body :: Maybe CreateSubscriptionResult of
@@ -128,4 +141,4 @@ httpSpec = with (return app) $ do
                   Nothing
                 else
                   Just (show expected <> " != " <> show actual)
-        createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` matchIfBody 201 (aWormholeInvitation expected)
+        createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` matchIfBody 201 (aWormholeInvitation wormholeCode)

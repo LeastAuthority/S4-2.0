@@ -19,6 +19,10 @@ import GHC.Generics
   ( Generic
   )
 
+import Control.Monad.IO.Class
+  ( liftIO
+  )
+
 import Control.Monad.Extra
   ( liftMaybe
   )
@@ -60,6 +64,10 @@ import S4.Internal.JSON
 
 import S4.Internal.Wormhole
   ( WormholeCode(WormholeCode)
+  )
+
+import S4.Internal.Model
+  ( Deployment(wormholeCodeGenerator)
   )
 
 import S4.Plan
@@ -110,10 +118,11 @@ type API =
 
 -- Attempt to create a new S4 subscription.
 createSubscription
-  :: CreateSubscription                 -- Parameters relating to the new subscription.
+  :: IO WormholeCode                    -- A generator for a wormhole code to use with the new subscription.
+  -> CreateSubscription                 -- Parameters relating to the new subscription.
   -> Handler CreateSubscriptionResult   -- Give back information describing the result of the attempt.
-createSubscription (CreateSubscriptionForPlan planID) = do
-  let wormholeCode = WormholeCode 101 ["monoidal", "endofunctors"]
+createSubscription wormholeCodeGen (CreateSubscriptionForPlan planID) = do
+  wormholeCode <- liftIO wormholeCodeGen
   case Map.lookup planID plans of
     Nothing ->
       -- The requested plan is not one we know about.
@@ -130,13 +139,13 @@ api :: Proxy API
 api = Proxy
 
 -- Another bit of Servant boilerplate.
-app :: Application
-app = serve api server
+app :: Deployment -> Application
+app deployment = serve api (server deployment)
 
 -- Collect the pieces of the implementation of the API into a whole.
-server :: Server API
-server = listPlans
-  :<|> createSubscription
+server :: Deployment -> Server API
+server deployment = listPlans
+  :<|> createSubscription (wormholeCodeGenerator deployment)
   where
     listPlans :: Handler [Plan]
     listPlans = return . Map.elems $ plans

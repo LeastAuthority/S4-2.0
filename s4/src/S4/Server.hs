@@ -15,6 +15,14 @@ import Network.Wai.Handler.Warp
   , run
   )
 
+import S4.Internal.Model
+  ( Deployment(Deployment, wormholeCodeGenerator)
+  )
+
+import S4.Internal.Wormhole
+  ( newWormholeCode
+  )
+
 import S4.Internal.API
   ( app
   )
@@ -23,4 +31,8 @@ import S4.Internal.API
 startServer
   :: Port      --  The TCP port number on which to listen for connections.
   -> IO ()
-startServer portNumber = run portNumber app
+startServer portNumber =
+  let
+    deployment = Deployment { wormholeCodeGenerator = newWormholeCode }
+  in
+    run portNumber $ app deployment
