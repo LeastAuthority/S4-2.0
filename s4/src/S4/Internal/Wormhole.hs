@@ -190,7 +190,7 @@ instance WormholeDelivery WormholeServer where
           putStrLn "Opening mailbox"
           peer <- MagicWormhole.open session mailbox
           putStrLn "Setting up encrypted connection handler"
-          let send = MagicWormhole.withEncryptedConnection peer spake2Password $ sendJSON ("Hello, world." :: Text)
+          let send = MagicWormhole.withEncryptedConnection peer spake2Password interact
           putStrLn "Setting up final close"
           let close = MagicWormhole.close session (Just mailbox) Nothing
           putStrLn "Executing"
@@ -201,3 +201,6 @@ instance WormholeDelivery WormholeServer where
         sendJSON obj conn = do
           let msg = MagicWormhole.Message $ decodeUtf8 $ toStrict $ encode obj
           MagicWormhole.sendMessage conn (MagicWormhole.PlainText (toStrict $ encode msg))
+
+        interact :: MagicWormhole.EncryptedConnection -> IO ()
+        interact = sendJSON ("Hello, world." :: Text)
