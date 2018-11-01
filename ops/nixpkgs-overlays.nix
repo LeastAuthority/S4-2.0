@@ -39,7 +39,8 @@ rec {
       { buildInputs = old.buildInputs ++ [ (self.python2.withPackages (ps: [ ps.attrs ps.spake2 ps.hkdf ])) ];
       });
       magic-wormhole = ghc-super.magic-wormhole.overrideAttrs (old:
-      { doCheck = false;
+      { buildInputs = old.buildInputs ++ [ (self.python2.withPackages (ps: with ps;
+      [ spake2 pynacl attrs twisted autobahn automat hkdf tqdm click humanize txtorcon magic-wormhole ])) ];
       });
     };
   };
