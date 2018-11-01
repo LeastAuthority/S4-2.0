@@ -41,6 +41,8 @@ library
                      , url
                      , base64-bytestring
                      , utf8-string
+                     , spake2
+                     , magic-wormhole
   default-language:    Haskell2010
 
 executable s4-exe

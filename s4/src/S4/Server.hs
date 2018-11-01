@@ -10,6 +10,10 @@ import Servant
   ( Proxy
   )
 
+import Network.URL
+  ( importURL
+  )
+
 import Network.Wai.Handler.Warp
   ( Port
   , run
@@ -20,7 +24,7 @@ import S4.Internal.Deployment
   )
 
 import S4.Internal.Wormhole
-  ( WormholeServer(WormholeServer)
+  ( WormholeServer(WormholeServer, wormholeServerRoot)
   )
 
 import S4.Internal.API
@@ -33,6 +37,11 @@ startServer
   -> IO ()
 startServer portNumber =
   let
-    deployment = Deployment { wormholeDelivery = WormholeServer }
+    Just rootURL = importURL "ws://wormhole.leastauthority.com:4000/v1"
+    deployment = Deployment
+      { wormholeDelivery = WormholeServer
+        { wormholeServerRoot = rootURL
+        }
+      }
   in
     run portNumber $ app deployment
