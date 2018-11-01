@@ -1,7 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module S4.Internal.Invoice
-  ( Invoice(Invoice)
+  ( Invoice
+  , invoice
   , deliverInvoice
-  , toURI
+  , toText
   ) where
 
 import Control.Monad.IO.Class
@@ -19,13 +22,23 @@ import Control.Concurrent.Async
   , async
   )
 
-import Data.Text
-  ( pack
+import qualified Data.ByteString.Base64.URL as B64U
+
+import Data.ByteString.UTF8
+  ( toString
   )
 
-import Network.URI
-  ( URI(..)
-  , uriToString
+import Data.Text
+  ( Text
+  , pack
+  , unpack
+  )
+
+import Network.URL
+  ( URL(URL, url_type, url_path, url_params)
+  , URLType(PathRelative)
+  , Host(Host)
+  , exportURL
   )
 
 import S4.Internal.Wormhole
@@ -33,17 +46,54 @@ import S4.Internal.Wormhole
   , WormholeCode
   )
 
+data InvoiceKey =
+  Currency
+  | Version
+  | Amount
+  | DueDate
+  | ExtensionDate
+  | ServiceLabel
+  | NextInvoiceURL
+  | Credit
+  | PublicKey
+  | Signature
+  | Message
+  deriving (Eq, Show)
+
+invoiceKey :: InvoiceKey -> String
+invoiceKey Version = "v"
+invoiceKey Currency = "c"
+invoiceKey Amount = "a"
+invoiceKey DueDate = "d"
+invoiceKey ExtensionDate = "e"
+invoiceKey ServiceLabel = "l"
+invoiceKey NextInvoiceURL = "u"
+invoiceKey Credit = "r"
+invoiceKey PublicKey = "p"
+invoiceKey Message = "m"
+invoiceKey Signature = "s"
+
 -- All of the details of a single payment that is required to maintain a
 -- subscription in good standing.
 data Invoice = Invoice
+  { label :: Text
+  }
 
-toURI :: Invoice -> URI
-toURI invoice = URI
-  { uriScheme = ""
-  , uriAuthority = Nothing
-  , uriPath = ""
-  , uriQuery = ""
-  , uriFragment = ""
+invoice :: Invoice
+invoice = Invoice
+  { label = "Least Authority S4 2.0"
+  }
+
+toText :: Invoice -> Text
+toText = pack . exportURL . toURL
+
+toURL :: Invoice -> URL
+toURL invoice = URL
+  { url_type = PathRelative
+  , url_path = ""
+  , url_params =
+    [ (invoiceKey ServiceLabel, toString . B64U.encode $ "Least Authority S4 2.0")
+    ]
   }
 
 deliverInvoice
@@ -60,10 +110,7 @@ deliverInvoice wormhole invoice = liftIO $ do
       -- invoice is marked as garbage (if this first invoice is not delivered
       -- then the legitimate owner of this subscription can never possibly use
       -- it; they should just retry).
-    let uri = toURI invoice
-    let uriString = (uriToString id uri) ""
-    let uriText = pack uriString
-    delivery <- sendThroughWormhole wormhole uriText wormholeCode
+    delivery <- sendThroughWormhole wormhole (toText invoice) wormholeCode
     case delivery of
       Left err -> throwM err
       Right () -> return ()

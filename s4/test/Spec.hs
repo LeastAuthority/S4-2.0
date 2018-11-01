@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Main (main) where
 
@@ -9,18 +10,33 @@ import Control.Exception.Safe
   , Exception
   , throwM
   )
+
+import Data.Either.Combinators
+  ( rightToMaybe
+  )
+
 import Data.List
   ( isInfixOf
+  , nub
   )
+
 import Data.Text
-  ( unpack
+  ( Text
+  , unpack
   )
+
 import Data.Text.Encoding
   ( decodeUtf8
   )
+
+import qualified Data.ByteString.UTF8 as UTF8
+
 import Data.ByteString.Lazy
   ( toStrict
   )
+
+import qualified Data.ByteString.Base64.URL as B64U
+
 import Data.Aeson
   ( decode
   , encode
@@ -36,8 +52,9 @@ import Network.HTTP.Types
   , methodPost
   )
 
-import Network.URI
-  ( uriToString
+import Network.URL
+  ( URL(URL, url_type, url_path, url_params)
+  , importURL
   )
 
 import Network.Wai.Test
@@ -54,8 +71,9 @@ import S4.Internal.Deployment
   )
 
 import S4.Internal.Invoice
-  ( Invoice(Invoice)
-  , toURI
+  ( Invoice
+  , invoice
+  , toText
   )
 
 import S4.Internal.Wormhole
@@ -182,9 +200,22 @@ httpSpec' wormholeCode deployment = with (return $ app deployment) $ do
 -- Spec for invoices
 invoiceSpec :: Spec
 invoiceSpec = do
-  describe "toURI" $ do
-    it "returns empty URI" $ do
-      (uriToString id $ toURI Invoice) "" `shouldBe` ""
+  describe "toText" $ do
+    context "URI query arguments" $
+      let
+        Just (URL { url_type, url_path, url_params }) = importURL . unpack $ (toText invoice)
+      in do
+        it "has unique query arguments" $
+          let
+            paramKeys = map (\(k, v) -> k) url_params
+          in
+            paramKeys `shouldBe` nub paramKeys
+
+        it "has a urlsafe-base64-encoded service label" $
+          let
+            label = (lookup "l" url_params) >>= (rightToMaybe . B64U.decode . UTF8.fromString)
+          in
+            label `shouldBe` Just "Least Authority S4 2.0"
 
   describe "deliverInvoice" $ do
     it "does stuff" $ do
