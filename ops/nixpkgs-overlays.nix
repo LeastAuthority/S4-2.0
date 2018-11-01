@@ -31,5 +31,16 @@ rec {
 
   zcash = super.callPackage ./zcash/default.nix { };
 
+  haskell = super.haskell //
+  { packageOverrides = ghc-self: ghc-super:
+    { spake2 = ghc-super.spake2.overrideAttrs (old:
+      { doCheck = false;
+      });
+      magic-wormhole = ghc-super.magic-wormhole.overrideAttrs (old:
+      { doCheck = false;
+      });
+    };
+  };
+
   s4 = super.callPackage ../s4/default.nix { };
 }
