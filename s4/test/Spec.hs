@@ -121,7 +121,7 @@ wormholeSpec =
 
         it "generates positive integer nameplates" $ do
           WormholeCode nameplate _ <- newWormholeCode
-          nameplate `shouldSatisfy` (flip (>) 0)
+          nameplate `shouldSatisfy` (> 0)
 
 
 -- A Magic Wormhole implementation that doesn't really deliver anything at
