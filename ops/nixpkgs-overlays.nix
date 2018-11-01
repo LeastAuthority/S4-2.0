@@ -33,9 +33,8 @@ rec {
 
   haskell = super.haskell //
   { packageOverrides = ghc-self: ghc-super:
+      # Provide some additional Python bits and bops required by the Spake2 and Magic-Wormhole test suites.
     { spake2 = ghc-super.spake2.overrideAttrs (old:
-      # Provide some additional Python bits and bops required by the Spake2
-      # test suite.
       { buildInputs = old.buildInputs ++ [ (self.python2.withPackages (ps: [ ps.attrs ps.spake2 ps.hkdf ])) ];
       });
       magic-wormhole = ghc-super.magic-wormhole.overrideAttrs (old:
