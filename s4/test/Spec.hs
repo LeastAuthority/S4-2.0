@@ -74,6 +74,7 @@ import S4.Internal.Invoice
   ( Invoice
   , invoice
   , toText
+  , deliverInvoice
   )
 
 import S4.Internal.Wormhole
@@ -124,13 +125,17 @@ wormholeSpec =
           nameplate `shouldSatisfy` (flip (>) 0)
 
 
-data FakeWormhole = FakeWormhole WormholeCode
+-- A Magic Wormhole implementation that doesn't really deliver anything at
+-- all.
+data FakeWormhole = FakeWormhole (Text -> Bool) WormholeCode
 
 instance WormholeDelivery FakeWormhole where
-  wormholeCodeGenerator (FakeWormhole code) = return code
+  -- Just give back the hard-coded code.
+  wormholeCodeGenerator (FakeWormhole _ code) = return code
 
-  sendThroughWormhole (FakeWormhole expectedCode) text wormholeCode =
-    if expectedCode == wormholeCode then
+  -- Verify the text and code are what we expect but otherwise do nothing.
+  sendThroughWormhole (FakeWormhole checkText expectedCode) text wormholeCode =
+    if expectedCode == wormholeCode && checkText text then
       return $ return ()
     else
       return $ throwM WrongWormholeCode
@@ -142,7 +147,7 @@ httpSpec :: Spec
 httpSpec =
   let
     wormholeCode = WormholeCode 101 ["monoidal", "endofunctors"]
-    deployment = Deployment { wormholeDelivery = FakeWormhole wormholeCode }
+    deployment = Deployment { wormholeDelivery = FakeWormhole (const True) wormholeCode }
   in
     httpSpec' wormholeCode deployment
 
@@ -218,5 +223,15 @@ invoiceSpec = do
             label `shouldBe` Just "Least Authority S4 2.0"
 
   describe "deliverInvoice" $ do
-    it "does stuff" $ do
-      1 `shouldBe` 1
+    it "returns the generated wormhole code" $ do
+      let wormholeCode = WormholeCode 202 ["rabid", "wombat"]
+      let wormhole = FakeWormhole (const True) wormholeCode
+      (Right code) <- deliverInvoice wormhole invoice
+      code `shouldBe` wormholeCode
+
+    it "sends the invoice URI through the wormhole " $ do
+      let expectedText = toText invoice
+      let wormholeCode = WormholeCode 202 ["rabid", "wombat"]
+      let wormhole = FakeWormhole ((==) expectedText) wormholeCode
+      (Right code) <- deliverInvoice wormhole invoice
+      code `shouldBe` wormholeCode
