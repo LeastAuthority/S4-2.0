@@ -6,9 +6,7 @@
 module Main (main) where
 
 import Control.Exception.Safe
-  ( SomeException
-  , Exception
-  , throwM
+  ( Exception
   )
 
 import Data.Either.Combinators
@@ -53,7 +51,6 @@ import Control.Concurrent.MVar
 
 import Test.Hspec
 import Test.Hspec.Wai
-import Test.Hspec.Wai.JSON
 
 import Network.HTTP.Types
   ( Header
@@ -61,12 +58,8 @@ import Network.HTTP.Types
   )
 
 import Network.URL
-  ( URL(URL, url_type, url_path, url_params)
+  ( URL(URL, url_params)
   , importURL
-  )
-
-import Network.Wai.Test
-  ( SResponse(simpleBody)
   )
 
 import S4.Internal.API
@@ -79,15 +72,13 @@ import S4.Internal.Deployment
   )
 
 import S4.Internal.Invoice
-  ( Invoice
-  , invoice
+  ( invoice
   , toText
   , deliverInvoice
   )
 
 import S4.Internal.Wormhole
   ( WormholeDelivery(wormholeCodeGenerator, sendThroughWormhole)
-  , WormholeServer
   , WormholeCode(WormholeCode)
   , newWormholeCode
   )
@@ -125,11 +116,11 @@ wormholeSpec =
 
       context "generation" $ do
         it "generates two-word codes" $ do
-          WormholeCode nameplate password <- newWormholeCode
+          WormholeCode _ password <- newWormholeCode
           length password `shouldBe` 2
 
         it "generates positive integer nameplates" $ do
-          WormholeCode nameplate password <- newWormholeCode
+          WormholeCode nameplate _ <- newWormholeCode
           nameplate `shouldSatisfy` (flip (>) 0)
 
 
@@ -181,17 +172,17 @@ httpSpec'
   -> Spec
 httpSpec' wormholeCode deployment = with (deployment >>= return . app) $ do
   let
-    matchIfBody status pred = status { matchBody = MatchBody pred }
+    matchIfBody status pred' = status { matchBody = MatchBody pred' }
 
   describe "GET /v1/plans" $ do
     it "responds with 200" $ do
       get "/v1/plans" `shouldRespondWith` 200
     it "responds with [Plan]" $ do
       let
-        somePlans headers body =
+        somePlans _ body =
           case decode body :: Maybe [Plan] of
             Nothing -> Just "Failed to deserialize body to [Plan]"
-            otherwise -> Nothing
+            _ -> Nothing
       get "/v1/plans" `shouldRespondWith` matchIfBody 200 somePlans
 
   describe "POST /v1/subscriptions" $ do
@@ -209,7 +200,7 @@ httpSpec' wormholeCode deployment = with (deployment >>= return . app) $ do
       it "responds with a Magic Wormhole invitation" $ do
         let
           aWormholeInvitation :: WormholeCode -> [Header] -> Body -> Maybe String
-          aWormholeInvitation expected headers body =
+          aWormholeInvitation expected _ body =
             case decode body :: Maybe CreateSubscriptionResult of
               Nothing ->
                 let textBody = decodeUtf8 $ toStrict body
@@ -221,6 +212,8 @@ httpSpec' wormholeCode deployment = with (deployment >>= return . app) $ do
                   Nothing
                 else
                   Just (show expected <> " != " <> show actual)
+              Just anything ->
+                Just ("Unexpected: " <> show anything)
         createSubscription "{\"create-for-plan-id\": \"abcd\"}" `shouldRespondWith` matchIfBody 201 (aWormholeInvitation wormholeCode)
 
 -- Spec for invoices
@@ -229,11 +222,11 @@ invoiceSpec = do
   describe "toText" $ do
     context "URI query arguments" $
       let
-        Just (URL { url_type, url_path, url_params }) = importURL . unpack $ (toText invoice)
+        Just (URL { url_params }) = importURL . unpack $ (toText invoice)
       in do
         it "has unique query arguments" $
           let
-            paramKeys = map (\(k, v) -> k) url_params
+            paramKeys = map (\(k, _) -> k) url_params
           in
             paramKeys `shouldBe` nub paramKeys
 
@@ -246,12 +239,12 @@ invoiceSpec = do
   describe "deliverInvoice" $ do
     it "returns the generated wormhole code" $ do
       wormhole <- fakeWormhole
-      (Right code) <- deliverInvoice wormhole invoice
-      (actualCode, _) <- takeMVar $ sentText wormhole
-      actualCode `shouldBe` WormholeCode 1 ["monoidal", "endofunctors"]
+      (Right returnedCode) <- deliverInvoice wormhole invoice
+      returnedCode `shouldBe` WormholeCode 1 ["monoidal", "endofunctors"]
 
     it "sends the invoice URI through the wormhole " $ do
       wormhole <- fakeWormhole
-      deliverInvoice wormhole invoice :: IO (Either SomeException WormholeCode)
-      (_, actualText) <- takeMVar $ sentText wormhole
+      Right returnedCode <- deliverInvoice wormhole invoice
+      (sentToCode, actualText) <- takeMVar $ sentText wormhole
+      sentToCode `shouldBe` returnedCode
       actualText `shouldBe` toText invoice
