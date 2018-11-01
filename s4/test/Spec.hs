@@ -43,6 +43,14 @@ import Data.Aeson
   , eitherDecode
   )
 
+import Control.Concurrent.MVar
+  ( MVar
+  , newEmptyMVar
+  , newMVar
+  , takeMVar
+  , putMVar
+  )
+
 import Test.Hspec
 import Test.Hspec.Wai
 import Test.Hspec.Wai.JSON
@@ -127,18 +135,31 @@ wormholeSpec =
 
 -- A Magic Wormhole implementation that doesn't really deliver anything at
 -- all.
-data FakeWormhole = FakeWormhole (Text -> Bool) WormholeCode
+data FakeWormhole = FakeWormhole
+  { nameplateCounter :: MVar Integer
+  , sentText :: MVar (WormholeCode, Text)
+  }
+
+fakeWormhole :: IO FakeWormhole
+fakeWormhole = do
+  nameplateCounter <- newMVar 1
+  sentText <- newEmptyMVar
+  return FakeWormhole
+    { nameplateCounter
+    , sentText
+    }
 
 instance WormholeDelivery FakeWormhole where
   -- Just give back the hard-coded code.
-  wormholeCodeGenerator (FakeWormhole _ code) = return code
+  wormholeCodeGenerator (FakeWormhole nameplateCounter _) = do
+    nameplate <- takeMVar nameplateCounter
+    putMVar nameplateCounter $ nameplate + 1
+    return $ WormholeCode nameplate ["monoidal", "endofunctors"]
 
   -- Verify the text and code are what we expect but otherwise do nothing.
-  sendThroughWormhole (FakeWormhole checkText expectedCode) text wormholeCode =
-    if expectedCode == wormholeCode && checkText text then
-      return $ return ()
-    else
-      return $ throwM WrongWormholeCode
+  sendThroughWormhole (FakeWormhole _ sentText) text wormholeCode = do
+    liftIO $ putMVar sentText (wormholeCode, text)
+    return $ return ()
 
 data WrongWormholeCode = WrongWormholeCode deriving (Eq, Show, Exception)
 
@@ -146,19 +167,19 @@ data WrongWormholeCode = WrongWormholeCode deriving (Eq, Show, Exception)
 httpSpec :: Spec
 httpSpec =
   let
-    wormholeCode = WormholeCode 101 ["monoidal", "endofunctors"]
-    deployment = Deployment { wormholeDelivery = FakeWormhole (const True) wormholeCode }
+    wormholeCode = WormholeCode 1 ["monoidal", "endofunctors"]
+    deployment = fakeWormhole >>= \w -> return Deployment { wormholeDelivery = w }
   in
     httpSpec' wormholeCode deployment
 
 -- Helper to actually generate the spec.
 httpSpec'
   :: WormholeDelivery w
-  => WormholeCode  -- The constant code that can be expected using the given
-                   -- deployment.
-  -> Deployment w  -- The Deployment to use to construct the server.
+  => WormholeCode       -- The constant code that can be expected using the given
+                        -- deployment.
+  -> IO (Deployment w)  -- The Deployment to use to construct the server.
   -> Spec
-httpSpec' wormholeCode deployment = with (return $ app deployment) $ do
+httpSpec' wormholeCode deployment = with (deployment >>= return . app) $ do
   let
     matchIfBody status pred = status { matchBody = MatchBody pred }
 
@@ -224,14 +245,13 @@ invoiceSpec = do
 
   describe "deliverInvoice" $ do
     it "returns the generated wormhole code" $ do
-      let wormholeCode = WormholeCode 202 ["rabid", "wombat"]
-      let wormhole = FakeWormhole (const True) wormholeCode
+      wormhole <- fakeWormhole
       (Right code) <- deliverInvoice wormhole invoice
-      code `shouldBe` wormholeCode
+      (actualCode, _) <- takeMVar $ sentText wormhole
+      actualCode `shouldBe` WormholeCode 1 ["monoidal", "endofunctors"]
 
     it "sends the invoice URI through the wormhole " $ do
-      let expectedText = toText invoice
-      let wormholeCode = WormholeCode 202 ["rabid", "wombat"]
-      let wormhole = FakeWormhole ((==) expectedText) wormholeCode
-      (Right code) <- deliverInvoice wormhole invoice
-      code `shouldBe` wormholeCode
+      wormhole <- fakeWormhole
+      deliverInvoice wormhole invoice :: IO (Either SomeException WormholeCode)
+      (_, actualText) <- takeMVar $ sentText wormhole
+      actualText `shouldBe` toText invoice
