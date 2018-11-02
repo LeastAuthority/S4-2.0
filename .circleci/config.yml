@@ -38,3 +38,9 @@ jobs:
           name: "Run Tests"
           working_directory: "s4"
           command: "stack test --coverage"
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+      - "tests"
