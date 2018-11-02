@@ -6,6 +6,9 @@ jobs:
     docker:
       - image: "fpco/stack-build:lts-12.13"
 
+    environment:
+      CI: "1"
+
     steps:
       # Get the source
       - "checkout"
@@ -39,6 +42,10 @@ jobs:
           name: "Build"
           working_directory: "s4"
           command: "stack build --no-terminal --coverage"
+      - run:
+          name: "Set up output path"
+          working_directory: "s4"
+          command: "mkdir -p test-results/http-tests"
       - run:
           name: "Test"
           working_directory: "s4"

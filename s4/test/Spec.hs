@@ -3,7 +3,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Main (main) where
+module Spec
+  ( spec
+  ) where
 
 import Control.Exception.Safe
   ( Exception
@@ -84,9 +86,6 @@ import S4.Internal.Wormhole
   )
 
 import S4.Plan (Plan)
-
-main :: IO ()
-main = hspec spec
 
 spec :: Spec
 spec = do
