@@ -1,6 +1,6 @@
 module Main where
 
--- Provide a test entrypoing that can easily generate results in JUnit XML for
+-- Provide a test entrypoint that can easily generate results in JUnit XML for
 -- the easy consumption of a CI system like CircleCI.
 
 import System.IO
