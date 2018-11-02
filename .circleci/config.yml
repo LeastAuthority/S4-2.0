@@ -13,22 +13,22 @@ jobs:
       # Get stack, caching as much as we can.
       - restore_cache:
           keys:
-            - stack-ghc-{{ checksum "stack.yaml" }}
+            - stack-ghc-{{ checksum "s4/stack.yaml" }}
       - restore_cache:
           keys:
-            - stack-deps-{{ checksum "s4.cabal" }}
+            - stack-deps-{{ checksum "s4/s4.cabal" }}
       - run:
           name: "Set up Stack"
           command: "stack setup --no-terminal --no-reinstall"
       - save_cache:
-          key: stack-ghc-{{ checksum "stack.yaml" }}
+          key: stack-ghc-{{ checksum "s4/stack.yaml" }}
           paths:
             - "/root/.stack"
       - run:
           name: "Install dependencies"
           command: "stack build --skip-ghc-check --no-terminal --test --only-dependencies"
       - save_cache:
-          key: stack-deps-{{ checksum "s4.cabal" }}
+          key: stack-deps-{{ checksum "s4/s4.cabal" }}
           paths:
             - "/root/.stack"
             - ".stack-work"
