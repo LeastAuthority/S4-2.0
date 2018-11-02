@@ -51,6 +51,12 @@ jobs:
           working_directory: "s4"
           command: "stack test --no-terminal --coverage"
 
+      # Get the coverage report uploaded as an artifact.
+      - store_artifacts:
+          # It would be nice to be able to extract this from the `stack test` command somehow.
+          path: ".stack-work/install/x86_64-linux/lts-12.13/8.4.3/hpc/index.html"
+          destination: "coverage"
+
 workflows:
   version: 2
   workflow:
