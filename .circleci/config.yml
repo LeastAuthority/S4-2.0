@@ -76,6 +76,7 @@ jobs:
             nix-channel --add https://nixos.org/channels/nixos-18.09-small nixpkgs
             nix-build \
               --show-trace \
+              --max-jobs 2 \
               --expr \
                 'with import <nixpkgs> { overlays = [ (import ./ops/nixpkgs-overlays.nix) ]; }; callPackage ./s4 { }'
 
