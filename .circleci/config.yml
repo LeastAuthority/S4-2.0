@@ -4,7 +4,7 @@ version: 2
 jobs:
   tests:
     docker:
-      image: "fpco/stack-build:lts-12.13"
+      - image: "fpco/stack-build:lts-12.13"
 
     steps:
       # Get the source
