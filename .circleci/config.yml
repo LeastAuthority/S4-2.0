@@ -81,3 +81,4 @@ workflows:
   workflow:
     jobs:
       - "tests"
+      - "s4-nix-build"
