@@ -69,16 +69,29 @@ jobs:
       # Get the source
       - "checkout"
 
+      - restore_cache:
+          keys:
+            # Make sure the Nix version here matches the nix-channel command below.
+            - nix-store-18.09-{{ checksum "s4/s4.nix" }}
+            - nix-store-18.09-
+
       # Build S4
       - run:
           name: "Build S4 Derivation"
           command: |
+            # Make sure the Nix version here matches the restore_cache / save_cache keys.
             nix-channel --add https://nixos.org/channels/nixos-18.09-small nixpkgs
             nix-build \
               --show-trace \
               --max-jobs 2 \
               --expr \
                 'with import <nixpkgs> { overlays = [ (import ./ops/nixpkgs-overlays.nix) ]; }; callPackage ./s4 { }'
+
+      - save_cache:
+          # Make sure the Nix version here matches the nix-channel command above.
+          key: nix-store-18.09-{{ checksum "s4/s4.nix" }}
+          paths:
+            - "/nix/store"
 
 workflows:
   version: 2
