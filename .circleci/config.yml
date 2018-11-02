@@ -58,7 +58,7 @@ jobs:
       # Get the coverage report uploaded as an artifact.
       - store_artifacts:
           # It would be nice to be able to extract this from the `stack test` command somehow.
-          path: "s4/.stack-work/install/x86_64-linux/lts-12.13/8.4.3/hpc/index.html"
+          path: "s4/.stack-work/install/x86_64-linux/lts-12.13/8.4.3/hpc/"
           destination: "coverage"
 
 workflows:
