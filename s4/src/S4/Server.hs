@@ -10,9 +10,21 @@ import Servant
   ( Proxy
   )
 
+import Network.URL
+  ( importURL
+  )
+
 import Network.Wai.Handler.Warp
   ( Port
   , run
+  )
+
+import S4.Internal.Deployment
+  ( Deployment(Deployment, wormholeDelivery)
+  )
+
+import S4.Internal.Wormhole
+  ( WormholeServer(WormholeServer, wormholeServerRoot)
   )
 
 import S4.Internal.API
@@ -23,4 +35,13 @@ import S4.Internal.API
 startServer
   :: Port      --  The TCP port number on which to listen for connections.
   -> IO ()
-startServer portNumber = run portNumber app
+startServer portNumber =
+  let
+    Just rootURL = importURL "ws://wormhole.leastauthority.com:4000/v1"
+    deployment = Deployment
+      { wormholeDelivery = WormholeServer
+        { wormholeServerRoot = rootURL
+        }
+      }
+  in
+    run portNumber $ app deployment

@@ -31,5 +31,18 @@ rec {
 
   zcash = super.callPackage ./zcash/default.nix { };
 
+  haskell = super.haskell //
+  { packageOverrides = ghc-self: ghc-super:
+      # Provide some additional Python bits and bops required by the Spake2 and Magic-Wormhole test suites.
+    { spake2 = ghc-super.spake2.overrideAttrs (old:
+      { buildInputs = old.buildInputs ++ [ (self.python2.withPackages (ps: [ ps.attrs ps.spake2 ps.hkdf ])) ];
+      });
+      magic-wormhole = ghc-super.magic-wormhole.overrideAttrs (old:
+      { buildInputs = old.buildInputs ++ [ (self.python2.withPackages (ps: with ps;
+      [ spake2 pynacl attrs twisted autobahn automat hkdf tqdm click humanize txtorcon magic-wormhole ])) ];
+      });
+    };
+  };
+
   s4 = super.callPackage ../s4/default.nix { };
 }
