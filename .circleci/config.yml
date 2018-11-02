@@ -61,6 +61,21 @@ jobs:
           path: "s4/.stack-work/install/x86_64-linux/lts-12.13/8.4.3/hpc/"
           destination: "coverage"
 
+  s4-nix-build:
+    docker:
+      - image: "nixos/nix"
+
+    steps:
+      # Get the source
+      - "checkout"
+
+      # Build S4
+      - run:
+          name: "Build S4 Derivation"
+          command: |
+            nix-build --show-trace --expr \
+              'with import <nixpkgs> { overlays = [ (import ./ops/nixpkgs-overlays.nix) ]; }; callPackage ./s4 { }'
+
 workflows:
   version: 2
   workflow:
