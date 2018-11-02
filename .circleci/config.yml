@@ -69,6 +69,11 @@ jobs:
       # Get the source
       - "checkout"
 
+      # Get some certificate authority certificates so the CircleCI caching tools will work.
+      - run:
+          name: "Install CA Certificates"
+          command: "nix-env --install nss-cacert"
+
       - restore_cache:
           keys:
             # Make sure the Nix version here matches the nix-channel command below.
