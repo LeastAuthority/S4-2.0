@@ -73,8 +73,11 @@ jobs:
       - run:
           name: "Build S4 Derivation"
           command: |
-            nix-build --show-trace --expr \
-              'with import <nixpkgs> { overlays = [ (import ./ops/nixpkgs-overlays.nix) ]; }; callPackage ./s4 { }'
+            nix-channel --add https://nixos.org/channels/nixos-18.09-small nixpkgs
+            nix-build \
+              --show-trace \
+              --expr \
+                'with import <nixpkgs> { overlays = [ (import ./ops/nixpkgs-overlays.nix) ]; }; callPackage ./s4 { }'
 
 workflows:
   version: 2
