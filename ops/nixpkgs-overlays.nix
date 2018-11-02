@@ -37,7 +37,7 @@ rec {
     { spake2 = ghc-super.spake2.overrideAttrs (old:
       { buildInputs = old.buildInputs ++ [ (self.python2.withPackages (ps: [ ps.attrs ps.spake2 ps.hkdf ])) ];
         # Also, upstream spake2 leaves pytest garbage lying around that results in file collisions.
-        preFixup = old.preFixup + ''
+        preFixup = ''
         rm -rf .pytest_cache
         '';
       });
