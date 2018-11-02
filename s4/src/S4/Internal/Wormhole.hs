@@ -155,6 +155,7 @@ class WormholeDelivery w where
   wormholeCodeGenerator :: w -> IO WormholeCode
   sendThroughWormhole   :: (MonadIO a, MonadThrow b) => w -> Text -> WormholeCode -> a (b ())
 
+-- A network-reachable Magic Wormhole server (i.e., the real thing).
 data WormholeServer =
   WormholeServer
   { wormholeServerRoot :: URL
@@ -169,8 +170,9 @@ instance WormholeDelivery WormholeServer where
 
   -- Send an invoice along a Magic Wormhole.  Negotiate with the client first
   -- to make sure they will understand what we're going to send.
-  -- TODO Really implement this
+  -- TODO Finish implementing this.
   sendThroughWormhole ws text wormholeCode = liftIO $ do
+    -- TODO Real logging
     TextIO.putStrLn $ "Sending " <> text
     let appID = MagicWormhole.AppID "tahoe-lafs.org/invite"
     let endpoint = exportURL $ wormholeServerRoot ws
@@ -202,5 +204,8 @@ instance WormholeDelivery WormholeServer where
           let msg = MagicWormhole.Message $ decodeUtf8 $ toStrict $ encode obj
           MagicWormhole.sendMessage conn (MagicWormhole.PlainText (toStrict $ encode msg))
 
+        -- TODO Factor the actual application logic for message generation and
+        -- interpretation out so it can be tested independently from a magic
+        -- wormhole server and peer.
         interact :: MagicWormhole.EncryptedConnection -> IO ()
         interact = sendJSON ("Hello, world." :: Text)

@@ -79,14 +79,17 @@ data Invoice = Invoice
   { label :: Text
   }
 
+-- Create an S4 2.0 invoice.
 invoice :: Invoice
 invoice = Invoice
   { label = "Least Authority S4 2.0"
   }
 
+-- Serialize an invoice to the URI-based text format.
 toText :: Invoice -> Text
 toText = pack . exportURL . toURL
 
+-- Convert an invoice to an intermediate URI representation.
 toURL :: Invoice -> URL
 toURL invoice = URL
   { url_type = PathRelative
@@ -96,6 +99,7 @@ toURL invoice = URL
     ]
   }
 
+-- Send an invoice through a new Magic Wormhole.
 deliverInvoice
   :: (MonadIO a, MonadThrow b, WormholeDelivery w)
   => w
