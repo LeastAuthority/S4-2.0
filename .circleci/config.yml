@@ -53,7 +53,7 @@ jobs:
 
       # Give the test results to CircleCI for additional processing and presentation.
       - store_test_results:
-          path: "test-results"
+          path: "s4/test-results"
 
       # Get the coverage report uploaded as an artifact.
       - store_artifacts:
