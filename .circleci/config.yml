@@ -45,7 +45,7 @@ jobs:
       - run:
           name: "Set up output path"
           working_directory: "s4"
-          command: "mkdir -p test-results/http-tests"
+          command: "mkdir -p test-results/unit-tests"
       - run:
           name: "Test"
           working_directory: "s4"
