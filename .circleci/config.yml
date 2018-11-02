@@ -34,11 +34,15 @@ jobs:
             - "/root/.stack"
             - ".stack-work"
 
-      # Run the tests.
+      # Build and run the tests.
       - run:
-          name: "Run Tests"
+          name: "Build"
           working_directory: "s4"
-          command: "stack test --coverage"
+          command: "stack build --no-terminal --coverage"
+      - run:
+          name: "Test"
+          working_directory: "s4"
+          command: "stack test --no-terminal --coverage"
 
 workflows:
   version: 2
