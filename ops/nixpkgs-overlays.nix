@@ -29,6 +29,24 @@ rec {
   };
   python3Packages = python3.pkgs;
 
+  python2 = super.python2.override
+  { packageOverrides = py-self: py-super:
+    { spake2 = py-super.spake2.overrideAttrs (old: rec
+      { # Upstream spake2 check phase leaves pytest garbage lying around that
+        # results in file collisions.
+        postCheck = ''
+        rm -rvf $out/.pytest_cache
+        '';
+        # And then it re-runs the tests in the "install check" phase.  Just
+        # disable that test run.  It seems like it should be possible to do
+        # (or re-do) the cleanup in postInstallCheck but postInstallCheck
+        # doesn't seem to get run (I don't know why).
+        doInstallCheck = false;
+      });
+    };
+  };
+  python2Packages = python2.pkgs;
+
   zcash = super.callPackage ./zcash/default.nix { };
 
   haskell = super.haskell //
