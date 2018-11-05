@@ -16,7 +16,7 @@ rec {
 
   python3 = super.python3.override
   { packageOverrides = py-self: py-super:
-    { txtorcon = py-super.txtorcon.overrideAttrs(old:
+    { txtorcon = py-super.txtorcon.overrideAttrs (old:
       { version = "18.3.0";
         name = "txtorcon-18.3.0";
         src = self.pkgs.fetchgit
