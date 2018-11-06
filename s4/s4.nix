@@ -10,6 +10,7 @@ mkDerivation {
   src = ./.;
   isLibrary = true;
   isExecutable = true;
+  doCheck = true;
   libraryHaskellDepends = [
     aeson async base base64-bytestring bytestring containers entropy
     magic-wormhole monad-extras network network-uri pgp-wordlist

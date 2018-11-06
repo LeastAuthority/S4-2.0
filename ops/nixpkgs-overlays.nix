@@ -59,8 +59,11 @@ rec {
       { buildInputs = old.buildInputs ++ [ (self.python2.withPackages (ps: with ps;
       [ spake2 pynacl attrs twisted autobahn automat hkdf tqdm click humanize txtorcon magic-wormhole ])) ];
       });
+
+      # Make our buildable fork of this available.
+      hspec-jenkins = super.callPackage ./hspec-jenkins-lae { };
     };
   };
 
-  s4 = super.callPackage ../s4/default.nix { };
+  s4 = super.callPackage ../s4 { };
 }
