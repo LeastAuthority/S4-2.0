@@ -3,7 +3,7 @@ rec {
   haskell = super.haskell //
   { packageOverrides = ghc-self: ghc-super:
     { # Make our buildable fork of this available.
-      hspec-jenkins = super.callPackage ./hspec-jenkins-lae { };
+      hspec-jenkins-lae = super.callPackage ./hspec-jenkins-lae { };
     };
   };
 

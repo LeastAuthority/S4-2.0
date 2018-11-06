@@ -1,7 +1,7 @@
 { mkDerivation, base, fetchFromGitHub, blaze-markup, hspec, stdenv }:
 mkDerivation {
   pname = "hspec-jenkins-lae";
-  version = "0.1.2";
+  version = "0.1.3";
   src = fetchFromGitHub
   { owner = "LeastAuthority";
     repo = "hspec-jenkins";
