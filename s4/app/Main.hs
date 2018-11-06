@@ -6,4 +6,4 @@ import S4.Server
 
 -- Run the S4 server.
 main :: IO ()
-main = startServer 8080
+main = startServer

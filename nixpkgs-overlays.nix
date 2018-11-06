@@ -34,5 +34,5 @@ rec {
     };
   };
 
-  s4 = super.callPackage ../s4 { };
+  s4 = super.callPackage ./s4 { };
 }
