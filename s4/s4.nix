@@ -1,8 +1,8 @@
 { mkDerivation, aeson, async, base, base64-bytestring, bytestring
-, containers, either, entropy, hspec, hspec-wai, hspec-wai-json
-, http-types, magic-wormhole, monad-extras, network, network-uri
-, pgp-wordlist, safe-exceptions, servant-server, spake2, stdenv
-, text, url, utf8-string, wai, wai-extra, warp
+, containers, either, entropy, hspec, hspec-jenkins, hspec-wai
+, hspec-wai-json, http-types, magic-wormhole, monad-extras, network
+, network-uri, pgp-wordlist, safe-exceptions, servant-server
+, spake2, stdenv, text, url, utf8-string, wai, wai-extra, warp
 }:
 mkDerivation {
   pname = "s4";
@@ -10,7 +10,6 @@ mkDerivation {
   src = ./.;
   isLibrary = true;
   isExecutable = true;
-  doCheck = true;
   libraryHaskellDepends = [
     aeson async base base64-bytestring bytestring containers entropy
     magic-wormhole monad-extras network network-uri pgp-wordlist
@@ -18,9 +17,9 @@ mkDerivation {
   ];
   executableHaskellDepends = [ base ];
   testHaskellDepends = [
-    aeson base base64-bytestring bytestring either hspec hspec-wai
-    hspec-wai-json http-types network-uri safe-exceptions text url
-    utf8-string wai-extra
+    aeson base base64-bytestring bytestring either hspec hspec-jenkins
+    hspec-wai hspec-wai-json http-types network-uri safe-exceptions
+    text url utf8-string wai-extra
   ];
   homepage = "https://github.com/LeastAuthority/s4#readme";
   license = stdenv.lib.licenses.bsd3;
