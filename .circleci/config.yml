@@ -86,6 +86,7 @@ jobs:
           command: |
             # Make sure the Nix version here matches the restore_cache / save_cache keys.
             nix-channel --add https://nixos.org/channels/nixos-18.09-small nixpkgs
+            nix-channel --update
             # Turn off optimization in the build.  Or put another way, optimize this for buildtime not runtime.
             nix-build \
               --show-trace \
