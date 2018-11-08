@@ -5,8 +5,8 @@ mkDerivation {
   src = fetchFromGitHub
   { owner = "LeastAuthority";
     repo = "hspec-jenkins";
-    rev = "7d2274461a395f9fa889890e14c6d758314b3af3";
-    sha256 = "0kp95dq50149zm4h9x1yi36w56hbh2nalgcgnynbj70s08x27w3m";
+    rev = "34556c238911afe28146110d049eed76ce600675";
+    sha256 = "0ik0d3f0mk3zybsy7gmw8cr4misd3jl77qqf0mrsmz5mqpqsspwz";
   };
   libraryHaskellDepends = [ base blaze-markup hspec ];
   homepage = "https://github.com/worksap-ate/hspec-jenkins";
