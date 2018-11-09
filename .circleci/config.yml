@@ -63,7 +63,7 @@ jobs:
 
   s4-nix-build:
     docker:
-      - image: "nixos/nix:2.0.4"
+      - image: "nixorg/nix:circleci"
 
     steps:
       # Get the source
